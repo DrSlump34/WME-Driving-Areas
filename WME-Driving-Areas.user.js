@@ -9,7 +9,7 @@
 // @name:he      WME Driving Areas
 // @icon         data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc2NCcgaGVpZ2h0PSc2NCcgdmlld0JveD0nMCAwIDY0IDY0Jz4gPHJlY3Qgd2lkdGg9JzY0JyBoZWlnaHQ9JzY0JyByeD0nMTInIGZpbGw9JyMxNTY1YzAnLz4gPHJlY3QgeD0nMTUnIHk9JzgnIHdpZHRoPSczNCcgaGVpZ2h0PSc2JyByeD0nMycgZmlsbD0nI2ZmZmZmZicvPiA8cmVjdCB4PScxNScgeT0nNTAnIHdpZHRoPSczNCcgaGVpZ2h0PSc2JyByeD0nMycgZmlsbD0nI2ZmZmZmZicvPiA8cGF0aCBkPSdNMTkgMTQgTDQ1IDE0IEwzNCAzMiBMNDUgNTAgTDE5IDUwIEwzMCAzMiBaJyBmaWxsPScjZmZmZmZmJy8+IDxwYXRoIGQ9J00yMyAxOCBMNDEgMTggTDMyIDMyIFonIGZpbGw9JyNmYjhjMDAnLz4gPHBhdGggZD0nTTMyIDQwIEw0MSA0NiBMMjMgNDYgWicgZmlsbD0nI2ZiOGMwMCcvPiA8cmVjdCB4PSczMScgeT0nMzAnIHdpZHRoPScyJyBoZWlnaHQ9JzEyJyBmaWxsPScjZmI4YzAwJy8+PC9zdmc+
 // @namespace    https://github.com/DrSlump34
-// @version      0.04.00
+// @version      0.05.00
 // @description  Shows how long your driving-based editing rights will last, next to the WME location label — rebuilt from your drive history. Adds a GPX export and a countdown to each drive.
 // @description:fr Affiche le temps restant sur vos droits d'édition obtenus en roulant, à côté du libellé de localisation de WME — reconstruit depuis l'historique des trajets. Ajoute un export GPX et un décompte à chaque trajet.
 // @description:de Zeigt neben der WME-Ortsanzeige, wie lange Ihre durch Fahrten erworbenen Bearbeitungsrechte noch gelten — rekonstruiert aus Ihrem Fahrtenverlauf. Mit GPX-Export und Countdown je Fahrt.
@@ -153,6 +153,10 @@
             tipMax: (max, age) => 'Vous êtes dans une zone parcourue, mais le trajet qui l\'a ouverte est plus ancien que l\'historique disponible (' + age + ' jours). Il reste au plus ' + max + ' jours. Ce trou se comble avec le temps.',
             pLoad: 'Charger l\'historique des trajets', pDisplay: 'Affichage',
             pLayer: 'Dessiner les trajets, colorés par échéance',
+            layerName: 'Trajets (Driving Areas)',
+            scDesc: 'Afficher ou masquer les trajets',
+            pShortcut: k => 'Raccourci clavier : <b>' + k + '</b>. La case est aussi dans le menu <b>Calques</b> de WME.',
+            pShortcutKO: 'Raccourci clavier indisponible (touches déjà prises). La case reste accessible ici et dans le menu Calques.',
             pAsEditor: 'Ignorer mes zones gérées (voir ce que verrait un éditeur sans droits)',
             pWhat: 'Ce que dit le badge',
             pWhatText: (km, d) => 'Le décompte part du <b>dernier passage</b> à moins de ' + km + ' du centre de la vue, plus ' + d + ' jours. Cette durée vient du Wazeopedia, qui ajoute « ou le dernier jour du mois, selon ce qui est le plus tardif » : le badge ne surestime donc jamais votre temps restant.<br><br><b>≤ N j</b> signifie que le trajet ayant ouvert la zone est plus ancien que l\'historique disponible : la date exacte est inconnue, mais elle est au plus tard celle-là.',
@@ -195,6 +199,10 @@
             tipMax: (max, age) => 'You are inside a driven area, but the drive that opened it is older than the available history (' + age + ' days). At most ' + max + ' days remain. This gap closes over time.',
             pLoad: 'Load drive history', pDisplay: 'Display',
             pLayer: 'Draw drives, coloured by expiry',
+            layerName: 'Drives (Driving Areas)',
+            scDesc: 'Show or hide the drives',
+            pShortcut: k => 'Keyboard shortcut: <b>' + k + '</b>. The checkbox is also in the WME <b>Layers</b> menu.',
+            pShortcutKO: 'Keyboard shortcut unavailable (keys already taken). The checkbox is still here and in the Layers menu.',
             pAsEditor: 'Ignore my managed areas (see what an editor without rights would see)',
             pWhat: 'What the badge means',
             pWhatText: (km, d) => 'The countdown starts from the <b>last drive</b> within ' + km + ' of the map centre, plus ' + d + ' days. That duration comes from Wazeopedia, which adds "or the last day of the month, whichever is later": the badge therefore never overstates your remaining time.<br><br><b>≤ N d</b> means the drive that opened the area is older than the available history: the exact date is unknown, but it is no later than that.',
@@ -237,6 +245,10 @@
             tipMax: (max, age) => 'Sie befinden sich in einem befahrenen Bereich, aber die Fahrt, die ihn geöffnet hat, ist älter als der verfügbare Verlauf (' + age + ' Tage). Es bleiben höchstens ' + max + ' Tage. Diese Lücke schließt sich mit der Zeit.',
             pLoad: 'Fahrtenverlauf laden', pDisplay: 'Anzeige',
             pLayer: 'Fahrten zeichnen, nach Ablauf eingefärbt',
+            layerName: 'Fahrten (Driving Areas)',
+            scDesc: 'Fahrten ein- oder ausblenden',
+            pShortcut: k => 'Tastenkürzel: <b>' + k + '</b>. Das Kästchen steht auch im WME-Menü <b>Ebenen</b>.',
+            pShortcutKO: 'Tastenkürzel nicht verfügbar (Tasten bereits belegt). Das Kästchen bleibt hier und im Ebenen-Menü erreichbar.',
             pAsEditor: 'Meine verwalteten Bereiche ignorieren (Sicht eines Bearbeiters ohne Rechte)',
             pWhat: 'Was das Abzeichen bedeutet',
             pWhatText: (km, d) => 'Die Frist beginnt mit der <b>letzten Fahrt</b> innerhalb von ' + km + ' um die Kartenmitte, plus ' + d + ' Tage. Diese Dauer stammt aus dem Wazeopedia, das „oder der letzte Tag des Monats, je nachdem, was später ist“ ergänzt: das Abzeichen überschätzt Ihre Restzeit also nie.<br><br><b>≤ N T</b> bedeutet, dass die öffnende Fahrt älter ist als der verfügbare Verlauf: das genaue Datum ist unbekannt, aber nicht später als dieses.',
@@ -279,6 +291,10 @@
             tipMax: (max, age) => 'Está dentro de un área conducida, pero el viaje que la abrió es más antiguo que el historial disponible (' + age + ' días). Quedan como máximo ' + max + ' días. Esta laguna se cierra con el tiempo.',
             pLoad: 'Cargar el historial de viajes', pDisplay: 'Visualización',
             pLayer: 'Dibujar los viajes, coloreados por vencimiento',
+            layerName: 'Viajes (Driving Areas)',
+            scDesc: 'Mostrar u ocultar los viajes',
+            pShortcut: k => 'Atajo de teclado: <b>' + k + '</b>. La casilla también está en el menú <b>Capas</b> de WME.',
+            pShortcutKO: 'Atajo de teclado no disponible (teclas ya ocupadas). La casilla sigue disponible aquí y en el menú Capas.',
             pAsEditor: 'Ignorar mis áreas gestionadas (ver lo que vería un editor sin permisos)',
             pWhat: 'Qué indica la etiqueta',
             pWhatText: (km, d) => 'La cuenta atrás parte del <b>último viaje</b> a menos de ' + km + ' del centro del mapa, más ' + d + ' días. Esa duración viene del Wazeopedia, que añade «o el último día del mes, lo que sea más tarde»: la etiqueta nunca sobrestima el tiempo restante.<br><br><b>≤ N d</b> significa que el viaje que abrió el área es anterior al historial disponible: la fecha exacta se desconoce, pero no es posterior a esa.',
@@ -321,6 +337,10 @@
             tipMax: (max, age) => 'Sei in un\'area percorsa, ma il viaggio che l\'ha aperta è più vecchio dello storico disponibile (' + age + ' giorni). Restano al massimo ' + max + ' giorni. Questa lacuna si colma col tempo.',
             pLoad: 'Carica lo storico dei viaggi', pDisplay: 'Visualizzazione',
             pLayer: 'Disegna i viaggi, colorati per scadenza',
+            layerName: 'Viaggi (Driving Areas)',
+            scDesc: 'Mostra o nascondi i viaggi',
+            pShortcut: k => 'Scorciatoia da tastiera: <b>' + k + '</b>. La casella è anche nel menu <b>Livelli</b> di WME.',
+            pShortcutKO: 'Scorciatoia non disponibile (tasti già occupati). La casella resta qui e nel menu Livelli.',
             pAsEditor: 'Ignora le mie aree gestite (vedi cosa vedrebbe un editor senza permessi)',
             pWhat: 'Cosa indica il distintivo',
             pWhatText: (km, d) => 'Il conto alla rovescia parte dall\'<b>ultimo passaggio</b> entro ' + km + ' dal centro della mappa, più ' + d + ' giorni. Questa durata viene dal Wazeopedia, che aggiunge «o l\'ultimo giorno del mese, se posteriore»: il distintivo non sovrastima mai il tempo che ti resta.<br><br><b>≤ N g</b> significa che il viaggio che ha aperto l\'area è più vecchio dello storico disponibile: la data esatta è ignota, ma non è posteriore a quella.',
@@ -363,6 +383,10 @@
             tipMax: (max, age) => 'Você está numa área percorrida, mas o trajeto que a abriu é mais antigo que o histórico disponível (' + age + ' dias). Restam no máximo ' + max + ' dias. Essa lacuna se fecha com o tempo.',
             pLoad: 'Carregar o histórico de trajetos', pDisplay: 'Exibição',
             pLayer: 'Desenhar os trajetos, coloridos por vencimento',
+            layerName: 'Trajetos (Driving Areas)',
+            scDesc: 'Mostrar ou ocultar os trajetos',
+            pShortcut: k => 'Atalho de teclado: <b>' + k + '</b>. A caixa também está no menu <b>Camadas</b> do WME.',
+            pShortcutKO: 'Atalho de teclado indisponível (teclas já ocupadas). A caixa continua aqui e no menu Camadas.',
             pAsEditor: 'Ignorar minhas áreas gerenciadas (ver o que veria um editor sem permissões)',
             pWhat: 'O que o distintivo indica',
             pWhatText: (km, d) => 'A contagem parte da <b>última passagem</b> a menos de ' + km + ' do centro do mapa, mais ' + d + ' dias. Essa duração vem do Wazeopedia, que acrescenta «ou o último dia do mês, o que for mais tarde»: o distintivo nunca superestima o tempo restante.<br><br><b>≤ N d</b> significa que o trajeto que abriu a área é anterior ao histórico disponível: a data exata é desconhecida, mas não é posterior a essa.',
@@ -405,6 +429,10 @@
             tipMax: (max, age) => 'Está numa área percorrida, mas o trajeto que a abriu é mais antigo do que o histórico disponível (' + age + ' dias). Restam no máximo ' + max + ' dias. Esta lacuna fecha-se com o tempo.',
             pLoad: 'Carregar o histórico de trajetos', pDisplay: 'Visualização',
             pLayer: 'Desenhar os trajetos, coloridos por prazo',
+            layerName: 'Trajetos (Driving Areas)',
+            scDesc: 'Mostrar ou ocultar os trajetos',
+            pShortcut: k => 'Atalho de teclado: <b>' + k + '</b>. A caixa também está no menu <b>Camadas</b> do WME.',
+            pShortcutKO: 'Atalho de teclado indisponível (teclas já ocupadas). A caixa continua aqui e no menu Camadas.',
             pAsEditor: 'Ignorar as minhas áreas geridas (ver o que veria um editor sem permissões)',
             pWhat: 'O que o distintivo indica',
             pWhatText: (km, d) => 'A contagem parte da <b>última passagem</b> a menos de ' + km + ' do centro do mapa, mais ' + d + ' dias. Esta duração vem do Wazeopedia, que acrescenta «ou o último dia do mês, o que for mais tarde»: o distintivo nunca sobrestima o tempo restante.<br><br><b>≤ N d</b> significa que o trajeto que abriu a área é anterior ao histórico disponível: a data exata é desconhecida, mas não é posterior a essa.',
@@ -447,6 +475,10 @@
             tipMax: (max, age) => 'אתם באזור שנסעתם בו, אך הנסיעה שפתחה אותו ישנה מההיסטוריה הזמינה (' + age + ' ימים). נותרו לכל היותר ' + max + ' ימים. הפער נסגר עם הזמן.',
             pLoad: 'טעינת היסטוריית הנסיעות', pDisplay: 'תצוגה',
             pLayer: 'ציור הנסיעות, צבועות לפי מועד הפקיעה',
+            layerName: 'נסיעות (Driving Areas)',
+            scDesc: 'הצגה או הסתרה של הנסיעות',
+            pShortcut: k => 'קיצור מקלדת: <b>' + k + '</b>. התיבה נמצאת גם בתפריט <b>שכבות</b> של WME.',
+            pShortcutKO: 'קיצור המקלדת אינו זמין (המקשים תפוסים). התיבה עדיין זמינה כאן ובתפריט השכבות.',
             pAsEditor: 'התעלמות מהאזורים המנוהלים שלי (לראות מה יראה עורך ללא הרשאות)',
             pWhat: 'מה מציין התג',
             pWhatText: (km, d) => 'הספירה מתחילה מה<b>נסיעה האחרונה</b> במרחק של עד ' + km + ' ממרכז המפה, בתוספת ' + d + ' ימים. משך זה מגיע מה-Wazeopedia, שמוסיף «או היום האחרון של החודש, המאוחר מביניהם»: לכן התג לעולם אינו מגזים בזמן שנותר.<br><br><b>עד N ימים</b> משמעו שהנסיעה שפתחה את האזור ישנה מההיסטוריה הזמינה: התאריך המדויק אינו ידוע, אך אינו מאוחר מכך.',
@@ -935,6 +967,84 @@
     }
 
     // =====================================================================
+    //  Le calque a TROIS commandes : la case du panneau, celle du menu Calques
+    //  de WME, et le raccourci clavier. Une seule fonction les met d'accord.
+    // =====================================================================
+
+    // Demandé par OliveStChi le 29/08/2026 : « un raccourci d'activation ou non
+    // est-il installable pour ne pas avoir à désactiver celui-ci depuis Tampermonkey ? »
+    // Mesuré le même jour : le calque existait bien côté carte, mais n'apparaissait dans
+    // AUCUNE des 46 entrées du gestionnaire de calques. Or un calque se cherche là.
+    const SC_ID = 'wda-toggle-layer';
+    const SC_KEYS = 'A+d';        // format du SDK : A=Alt, C=Ctrl, S=Shift. Mesuré libre ;
+    // ⚠️ `areShortcutKeysInUse` rend `false` pour une syntaxe INVALIDE comme pour des touches
+    // libres : en `alt+d` (mauvais format) il répondait « pris » pour tout. Ne pas s'en servir
+    // comme d'un contrôle de validité — c'est `createShortcut` qui lève.
+    let caseCalqueNom = null;     // nom sous lequel la case est posée, ou null si absente
+    let raccourciOk = false;
+
+    // ⚠️ Trois interfaces pour un même état : si chacune écrit le sien, elles divergent sans
+    // que rien ne le signale. Tout passe donc par ici.
+    function basculerCalque(actif) {
+        opts.calque = !!actif;
+        ecrireOpts();
+        if (opts.calque) dessinerCalque(); else effacerCalque();
+        const cq = paneEl && paneEl.querySelector('#wda-calque');
+        if (cq && cq.checked !== opts.calque) cq.checked = opts.calque;
+        if (caseCalqueNom) {
+            try {
+                if (sdk.LayerSwitcher.isLayerCheckboxChecked({ name: caseCalqueNom }) !== opts.calque) {
+                    sdk.LayerSwitcher.setLayerCheckboxChecked({ name: caseCalqueNom, isChecked: opts.calque });
+                }
+            } catch (e) { }
+        }
+    }
+
+    // L'événement se déclenche pour la case de N'IMPORTE quel calque : plutôt que de se fier à
+    // une charge utile non documentée, on relit notre propre état et on se resynchronise.
+    function surCaseCalque() {
+        if (!caseCalqueNom) return;
+        let etat;
+        try { etat = sdk.LayerSwitcher.isLayerCheckboxChecked({ name: caseCalqueNom }); } catch (e) { return; }
+        if (typeof etat === 'boolean' && etat !== opts.calque) basculerCalque(etat);
+    }
+
+    function poserCommandesCalque() {
+        // La case porte un nom traduit : au changement de langue il faut la retirer et la
+        // reposer, sinon deux cases cohabitent sous deux libellés.
+        retirerCaseCalque();
+        try {
+            const nom = t('layerName');
+            sdk.LayerSwitcher.addLayerCheckbox({ name: nom });
+            caseCalqueNom = nom;
+            sdk.LayerSwitcher.setLayerCheckboxChecked({ name: nom, isChecked: opts.calque });
+        } catch (e) { caseCalqueNom = null; log('menu Calques : ' + e.message); }
+    }
+
+    function retirerCaseCalque() {
+        if (!caseCalqueNom) return;
+        try { sdk.LayerSwitcher.removeLayerCheckbox({ name: caseCalqueNom }); } catch (e) { }
+        caseCalqueNom = null;
+    }
+
+    function poserRaccourci() {
+        try {
+            sdk.Shortcuts.createShortcut({
+                shortcutId: SC_ID,
+                shortcutKeys: SC_KEYS,
+                description: t('scDesc'),
+                callback: () => basculerCalque(!opts.calque)
+            });
+            raccourciOk = true;
+        } catch (e) {
+            // Chez un utilisateur dont les touches sont déjà prises, l'absence de raccourci
+            // doit se LIRE dans le panneau, pas se deviner.
+            raccourciOk = false;
+            log('raccourci ' + SC_KEYS + ' : ' + e.message);
+        }
+    }
+
+    // =====================================================================
     //  Panneau « Vos trajets » : échéance + export GPX
     // =====================================================================
 
@@ -1186,6 +1296,7 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
   <div class="wda-note" id="wda-prog" style="margin-top:6px"></div>
   <h4>${t('pDisplay')}</h4>
   <label><input type="checkbox" id="wda-calque"> ${t('pLayer')}</label>
+  <div class="wda-note" id="wda-sc"></div>
   <label><input type="checkbox" id="wda-editeur"> ${t('pAsEditor')}</label>
   <label>${t('pLang')}
     <select id="wda-lang">
@@ -1223,6 +1334,9 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
                     + (vides ? '<br>' + t('pCacheEmpty', vides) : '');
             }
         }
+        const sc = $('wda-sc');
+        if (sc) sc.innerHTML = raccourciOk ? t('pShortcut', SC_KEYS.replace('A+', 'Alt+')) : t('pShortcutKO');
+
         // Un bouton qui cesse d'apparaître doit se voir : sans cette ligne, une évolution de
         // WME casserait l'export en silence.
         const g = $('wda-gpx-etat');
@@ -1254,10 +1368,7 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
             } finally { btn.disabled = false; majPanneau(); }
         });
         const cq = $('wda-calque'); cq.checked = opts.calque;
-        cq.addEventListener('change', () => {
-            opts.calque = cq.checked; ecrireOpts();
-            if (opts.calque) dessinerCalque(); else effacerCalque();
-        });
+        cq.addEventListener('change', () => basculerCalque(cq.checked));
         const ed = $('wda-editeur'); ed.checked = opts.commeEditeur;
         ed.addEventListener('change', () => {
             opts.commeEditeur = ed.checked; ecrireOpts();
@@ -1273,6 +1384,9 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
             paneEl.innerHTML = buildPane();
             connectPane();
             rafraichirEcheances();
+            // Le nom de la case du menu Calques est traduit : sans cette repose, l'ancien
+            // libellé resterait et une seconde case apparaîtrait à la langue suivante.
+            poserCommandesCalque();
             recalculer(true);
         });
     }
@@ -1308,6 +1422,13 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
         attendreHote();
         try { sdk.Events.on({ eventName: 'wme-map-move-end', eventHandler: () => recalculer(false) }); }
         catch (e) { log('événement carte : ' + e.message); }
+
+        // Les deux commandes réclamées par OliveStChi : la case là où on cherche un calque,
+        // et le raccourci pour ne pas avoir à ouvrir un panneau.
+        poserCommandesCalque();
+        poserRaccourci();
+        try { sdk.Events.on({ eventName: 'wme-layer-checkbox-toggled', eventHandler: surCaseCalque }); }
+        catch (e) { log('événement calque : ' + e.message); }
 
         recalculer(true);
         if (opts.calque && cache.drives.length) dessinerCalque();
