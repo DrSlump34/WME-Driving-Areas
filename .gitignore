@@ -1,0 +1,6 @@
+# Anciennes versions deja archivees sur le disque
+Archives/
+# Fichiers systeme
+Thumbs.db
+desktop.ini
+.DS_Store
