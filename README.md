@@ -159,10 +159,13 @@ sur l'image, et une route qui ne doit pas voler la vedette au sablier.
   le bouton à 8, 6 px entre les deux, **sans troncature du libellé** (à 96 px de marge il manquait
   1 pixel et la date était coupée — mesuré, pas jugé à l'œil).
 - GPX sur un trajet de 6,982 km : 7 segments, 153 points, 6 899 octets, parsé sans erreur.
+- Le ∞ des ayants droit permanents : **15 pastilles sur 15**, vues à l’écran sur la 0.04.00
+  installée, infobulle « zone gérée » conforme.
 - Langues : bascule vérifiée en allemand (badge, pastille `T-90`, titres du panneau) et en hébreu
   (badge, infobulle, pastille `י-90`, panneau en `dir="rtl"`). Les 8 langues portent exactement les
-  mêmes 49 clés.
+  mêmes 51 clés.
+- Export GPX complet (génération **et** téléchargement), éprouvé par l'auteur.
 
-Deux choses restent à vérifier, et ni l'une ni l'autre ne peut l'être ici :
-- le **téléchargement** lui-même (la génération du fichier est éprouvée, pas le clic qui l'enregistre) ;
-- le comportement sur un compte **sans** accès permanent — il demande un éditeur comme OliveStChi.
+Il reste **un** point non vérifié, et il ne peut pas l'être ici : le comportement sur un compte
+**sans** accès permanent. Il demande un éditeur comme OliveStChi, à qui la question a été posée
+dans le message d'annonce.
