@@ -93,7 +93,7 @@ imprécision sur le rayon ne coûte jamais un faux négatif sur le droit lui-mê
 | Situation | Badge |
 |---|---|
 | Zone parcourue, trajet daté connu | `~33 j restants ici` (couleur selon l'urgence) |
-| Zone parcourue, trajet trop ancien pour l'archive | `≤ 27 j restants ici` |
+| Zone parcourue, trajet trop ancien pour l'archive | `≤ 27 j restants ici`, **hachuré** |
 | Trajet trouvé au-delà du rayon annoncé | `~33 j restants ici (approx.)` |
 | Zone gérée, ou pays géré (CM / Champ) | `accès permanent (pays géré) · roulé il y a 57 j` |
 | Aucun trajet à portée | `hors zone parcourue` |
@@ -167,6 +167,34 @@ Trajets colorés par échéance. Commandé depuis le **menu Calques de WME** et 
 | `PAGE` | 50 | `count` max accepté par `Archive/List` — **99 passe, 100 lève** |
 | `MOVE_DEBOUNCE` | 700 ms | Anti-rebond du recalcul |
 | `ELARGI` | 2,5 | Facteur d'élargissement de la recherche (§ 4.3) |
+| `SEUILS` | 0 / 14 / 30 / 60 / ∞ | Le code couleur, en jours **restants** (§ 3.1 bis) |
+
+### 3.1 bis Le code couleur, et sa légende
+
+| Jours restants | Pastille | Trace du calque |
+|---|---|---|
+| > 60 | vert `#2e7d32` | `#43a047` |
+| 31 à 60 | jaune `#c8a000` | `#fdd835` |
+| 15 à 30 | orange `#e67800` | `#fb8c00` |
+| 1 à 14 | rouge `#c62828` | `#e53935` |
+| expiré (≤ 0) | gris `#757575` | gris `#9e9e9e` |
+
+⭐⭐⭐⭐ **Ces bornes n'existent qu'à un seul endroit, la table `SEUILS`** : `couleurClasse()` les
+applique aux pastilles, `couleurPour()` au calque, et **`legendeHTML()` les affiche**. La légende
+du panneau est donc *dérivée* du code joué, jamais recopiée — une légende recopiée redevient fausse
+au premier réglage changé, et c'est précisément le défaut qu'elle corrige.
+
+🔴 **D'où vient cette légende.** Le 08/09/2026, OliveStChi (éditeur ④) a envoyé sa lecture des
+couleurs : *« Plus de 60 jours = vert, entre 30 et 60 = sable, entre 20 et 30 = orange, moins de
+2 jours = rouge »*. Les deux premières justes, la dernière **fausse de douze jours** — le rouge
+part de 14. Il n'avait rien fait de travers : **il n'y avait aucune légende**, donc il a deviné.
+⇒ Un code couleur sans légende se fait deviner, et il se devine faux.
+
+⚠️ **Le rouge portait deux sens.** `≤ N j` (trajet sorti de l'archive, date **incertaine**) était
+rouge comme `1 à 14 j` (échéance **proche**). Une couleur ne peut pas dire deux choses : la couleur
+garde le délai, et **des hachures disent le doute** (`wda-approx`, posée en plus de la classe de
+tranche). Une trace expirée passe au gris pour la même raison : la crier en rouge la faisait lire
+comme une urgence alors qu'elle ne donne plus rien.
 
 ⚠️ **`minDistance=0` est important** : le défaut de WME (1000) écarte **41 % des trajets**, et
 ceux-là ouvrent des droits comme les autres.
@@ -249,9 +277,23 @@ touche pas garderait **deux copies divergentes**.
 
 ### 6.3 Dégradation sous quota
 
-`ecrireCache` purge d'abord les trajets de plus de `PURGE_DAYS`. Si le quota `localStorage` est
-quand même dépassé, il **garde les 180 trajets les plus récents** et le journalise. Un échec final
-est journalisé aussi — **jamais avalé**.
+`ecrireCache` **arrondit d'abord toutes les coordonnées à 5 décimales** (1 m, pour des traces déjà
+décimées à 400 m), puis purge les trajets de plus de `PURGE_DAYS`. Si le quota `localStorage` est
+quand même dépassé, il **garde les 180 trajets les plus récents**. Un échec final est journalisé —
+**jamais avalé**.
+
+⚡ **L'arrondi vaut 54 % du poids stocké**, mesuré sur 300 trajets × 80 points : **880 Ko → 408 Ko**.
+Waze descend ses coordonnées en flottants pleine précision, une quinzaine de caractères chacune une
+fois en JSON. ⚠️ **Le quota `localStorage` est celui de l'ORIGINE `waze.com`, partagé avec tous les
+autres userscripts de l'éditeur** : la place économisée ici ne profite pas qu'à WDA.
+✅ L'export GPX n'est pas dégradé : `construireGPX` refait son propre appel à `SessionGPS` et ne
+lit du cache que la date.
+
+⭐⭐⭐⭐ **La troncature se COMPTE et s'affiche** (`cache.tronque`, rendu en rouge sous « Historique
+en cache »). Auparavant elle ne partait qu'en console : l'historique se vidait par le bas et rien à
+l'écran ne le disait. Un utilisateur ne pouvait pas distinguer cette perte-là de la fenêtre courte
+de l'archive Waze — et c'est exactement la confusion qu'a vécue OliveStChi. Le compteur est remis à
+zéro dès qu'une écriture repasse sans tronquer, donc l'alerte ne survit pas au problème.
 
 ### 6.4 Le chargement de l'historique
 

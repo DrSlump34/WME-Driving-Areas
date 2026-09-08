@@ -9,7 +9,7 @@
 // @name:he      WME Driving Areas
 // @icon         data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc2NCcgaGVpZ2h0PSc2NCcgdmlld0JveD0nMCAwIDY0IDY0Jz4gPHJlY3Qgd2lkdGg9JzY0JyBoZWlnaHQ9JzY0JyByeD0nMTInIGZpbGw9JyMxNTY1YzAnLz4gPHJlY3QgeD0nMTUnIHk9JzgnIHdpZHRoPSczNCcgaGVpZ2h0PSc2JyByeD0nMycgZmlsbD0nI2ZmZmZmZicvPiA8cmVjdCB4PScxNScgeT0nNTAnIHdpZHRoPSczNCcgaGVpZ2h0PSc2JyByeD0nMycgZmlsbD0nI2ZmZmZmZicvPiA8cGF0aCBkPSdNMTkgMTQgTDQ1IDE0IEwzNCAzMiBMNDUgNTAgTDE5IDUwIEwzMCAzMiBaJyBmaWxsPScjZmZmZmZmJy8+IDxwYXRoIGQ9J00yMyAxOCBMNDEgMTggTDMyIDMyIFonIGZpbGw9JyNmYjhjMDAnLz4gPHBhdGggZD0nTTMyIDQwIEw0MSA0NiBMMjMgNDYgWicgZmlsbD0nI2ZiOGMwMCcvPiA8cmVjdCB4PSczMScgeT0nMzAnIHdpZHRoPScyJyBoZWlnaHQ9JzEyJyBmaWxsPScjZmI4YzAwJy8+PC9zdmc+
 // @namespace    https://github.com/DrSlump34
-// @version      0.05.00
+// @version      0.06.00
 // @description  Shows how long your driving-based editing rights will last, next to the WME location label — rebuilt from your drive history. Adds a GPX export and a countdown to each drive.
 // @description:fr Affiche le temps restant sur vos droits d'édition obtenus en roulant, à côté du libellé de localisation de WME — reconstruit depuis l'historique des trajets. Ajoute un export GPX et un décompte à chaque trajet.
 // @description:de Zeigt neben der WME-Ortsanzeige, wie lange Ihre durch Fahrten erworbenen Bearbeitungsrechte noch gelten — rekonstruiert aus Ihrem Fahrtenverlauf. Mit GPX-Export und Countdown je Fahrt.
@@ -77,6 +77,19 @@
     // points sont à plus de 6,437 km de toute trace, jusqu'à 11,4 km. On élargit donc la
     // recherche quand le rayon nominal ne trouve rien — en le DISANT.
     const ELARGI = 2.5;
+    // Le code couleur, en jours RESTANTS, et il n'existe qu'ici : couleurClasse() l'applique aux
+    // pastilles, couleurTrace() au calque, et la légende du panneau l'affiche. OliveStChi avait
+    // deviné « rouge = moins de 2 jours » là où le code disait 14 : sans légende, on devine, et
+    // on devine faux. Une légende qui ne descend pas de la table jouée redeviendrait fausse.
+    // Les teintes du calque sont plus vives que celles des pastilles : elles se lisent sur une
+    // photo satellite, pas sur du blanc.
+    const SEUILS = [
+        { max: 0, cls: 'wda-gris', trace: '#9e9e9e' },
+        { max: 14, cls: 'wda-rouge', trace: '#e53935' },
+        { max: 30, cls: 'wda-orange', trace: '#fb8c00' },
+        { max: 60, cls: 'wda-jaune', trace: '#fdd835' },
+        { max: Infinity, cls: 'wda-vert', trace: '#43a047' },
+    ];
     const LS_KEY = 'wda.cache.v1';
     const LS_OPT = 'wda.opts.v1';
     // Clés de la version précédente (le script s'appelait WME Area Countdown) : reprises une
@@ -163,6 +176,13 @@
             pCache: 'Historique en cache', pCacheNone: 'Aucun trajet en cache.',
             pCacheInfo: (n, a, b, age, v) => n + ' trajets, du ' + a + ' au ' + b + ' — soit ' + age + ' jours de couverture sur les ' + v + ' de validité.',
             pCacheEmpty: n => 'Dont ' + n + ' sans trace GPS (aucune route appariée par Waze) : ils n\'ouvrent aucun droit et ne comptent pas dans le calcul.',
+            pCacheCut: n => '⚠️ ' + n + ' trajet(s) n\'ont pas pu être conservés : la mémoire locale de waze.com est pleine (elle est partagée avec vos autres scripts). Les plus anciens ont été jetés. Ils reviendront au prochain chargement s\'ils sont encore dans l\'archive de Waze.',
+            pLegend: 'Code couleur',
+            lgUnit: ' j',
+            lgExpired: 'droit expiré',
+            lgPerm: 'accès permanent, aucun décompte',
+            lgApprox: 'trajet sorti de l\'archive : date inconnue, au plus tard celle affichée',
+            lgNone: 'aucun trajet connu ici',
             pGpx: 'Export GPX et décompte',
             pGpxText: 'Chaque trajet du panneau « Vos trajets » reçoit son échéance (<b>J-41</b>) et un bouton <b>⤓</b> d\'export GPX, en pleine résolution, un segment par tronçon.',
             pGpxMissing: n => n + ' trajet(s) sans bouton : leur identifiant n\'a pas pu être retrouvé. WME a probablement changé.',
@@ -209,6 +229,13 @@
             pCache: 'Cached history', pCacheNone: 'No drives cached.',
             pCacheInfo: (n, a, b, age, v) => n + ' drives, from ' + a + ' to ' + b + ' — ' + age + ' days of coverage out of the ' + v + ' of validity.',
             pCacheEmpty: n => 'Including ' + n + ' with no GPS trace (no road matched by Waze): they grant no rights and are left out of the estimate.',
+            pCacheCut: n => '⚠️ ' + n + ' drive(s) could not be kept: the local storage of waze.com is full (it is shared with your other scripts). The oldest ones were dropped. They will come back on the next load if Waze still archives them.',
+            pLegend: 'Colour key',
+            lgUnit: ' d',
+            lgExpired: 'right expired',
+            lgPerm: 'permanent access, no countdown',
+            lgApprox: 'drive out of the archive: date unknown, no later than the one shown',
+            lgNone: 'no known drive here',
             pGpx: 'GPX export and countdown',
             pGpxText: 'Every drive in the "My drives" panel gets its expiry (<b>D-41</b>) and a <b>⤓</b> GPX export button, at full resolution, one segment per leg.',
             pGpxMissing: n => n + ' drive(s) without a button: their identifier could not be resolved. WME has probably changed.',
@@ -255,6 +282,13 @@
             pCache: 'Zwischengespeicherter Verlauf', pCacheNone: 'Keine Fahrten gespeichert.',
             pCacheInfo: (n, a, b, age, v) => n + ' Fahrten, vom ' + a + ' bis ' + b + ' — also ' + age + ' Tage Abdeckung von den ' + v + ' Tagen Gültigkeit.',
             pCacheEmpty: n => 'Davon ' + n + ' ohne GPS-Spur (keine Straße von Waze zugeordnet): sie gewähren keine Rechte und zählen nicht.',
+            pCacheCut: n => '⚠️ ' + n + ' Fahrt(en) konnten nicht gespeichert werden: der lokale Speicher von waze.com ist voll (er wird mit Ihren anderen Skripten geteilt). Die ältesten wurden verworfen. Sie kehren beim nächsten Laden zurück, sofern Waze sie noch archiviert.',
+            pLegend: 'Farbcode',
+            lgUnit: ' T',
+            lgExpired: 'Recht abgelaufen',
+            lgPerm: 'dauerhafter Zugang, kein Countdown',
+            lgApprox: 'Fahrt außerhalb des Archivs: Datum unbekannt, spätestens das angezeigte',
+            lgNone: 'keine bekannte Fahrt hier',
             pGpx: 'GPX-Export und Countdown',
             pGpxText: 'Jede Fahrt im Bereich „Meine Fahrten“ erhält ihre Frist (<b>T-41</b>) und eine <b>⤓</b>-Schaltfläche für den GPX-Export in voller Auflösung, ein Segment je Teilstück.',
             pGpxMissing: n => n + ' Fahrt(en) ohne Schaltfläche: Kennung nicht auflösbar. WME hat sich vermutlich geändert.',
@@ -301,6 +335,13 @@
             pCache: 'Historial en caché', pCacheNone: 'Ningún viaje en caché.',
             pCacheInfo: (n, a, b, age, v) => n + ' viajes, del ' + a + ' al ' + b + ' — es decir ' + age + ' días de cobertura sobre los ' + v + ' de validez.',
             pCacheEmpty: n => 'De los cuales ' + n + ' sin traza GPS (ninguna vía emparejada por Waze): no otorgan permisos y no cuentan.',
+            pCacheCut: n => '⚠️ No se han podido conservar ' + n + ' trayecto(s): el almacenamiento local de waze.com está lleno (se comparte con sus otros scripts). Se han descartado los más antiguos. Volverán en la próxima carga si Waze todavía los archiva.',
+            pLegend: 'Código de colores',
+            lgUnit: ' d',
+            lgExpired: 'permiso caducado',
+            lgPerm: 'acceso permanente, sin cuenta atrás',
+            lgApprox: 'trayecto fuera del archivo: fecha desconocida, como muy tarde la mostrada',
+            lgNone: 'ningún trayecto conocido aquí',
             pGpx: 'Exportación GPX y cuenta atrás',
             pGpxText: 'Cada viaje del panel «Mis viajes» recibe su vencimiento (<b>D-41</b>) y un botón <b>⤓</b> de exportación GPX, a plena resolución, un segmento por tramo.',
             pGpxMissing: n => n + ' viaje(s) sin botón: no se pudo resolver su identificador. Probablemente WME ha cambiado.',
@@ -347,6 +388,13 @@
             pCache: 'Storico in cache', pCacheNone: 'Nessun viaggio in cache.',
             pCacheInfo: (n, a, b, age, v) => n + ' viaggi, dal ' + a + ' al ' + b + ' — cioè ' + age + ' giorni di copertura sui ' + v + ' di validità.',
             pCacheEmpty: n => 'Di cui ' + n + ' senza traccia GPS (nessuna strada associata da Waze): non danno permessi e non contano.',
+            pCacheCut: n => '⚠️ Non è stato possibile conservare ' + n + ' viaggio(i): la memoria locale di waze.com è piena (è condivisa con gli altri script). I più vecchi sono stati scartati. Torneranno al prossimo caricamento se Waze li archivia ancora.',
+            pLegend: 'Codice colori',
+            lgUnit: ' g',
+            lgExpired: 'permesso scaduto',
+            lgPerm: 'accesso permanente, nessun conto alla rovescia',
+            lgApprox: 'viaggio fuori dall\'archivio: data sconosciuta, al più tardi quella mostrata',
+            lgNone: 'nessun viaggio noto qui',
             pGpx: 'Esportazione GPX e conto alla rovescia',
             pGpxText: 'Ogni viaggio del pannello «I miei viaggi» riceve la sua scadenza (<b>G-41</b>) e un pulsante <b>⤓</b> di esportazione GPX, a piena risoluzione, un segmento per tratto.',
             pGpxMissing: n => n + ' viaggio/i senza pulsante: identificativo non risolto. WME è probabilmente cambiato.',
@@ -393,6 +441,13 @@
             pCache: 'Histórico em cache', pCacheNone: 'Nenhum trajeto em cache.',
             pCacheInfo: (n, a, b, age, v) => n + ' trajetos, de ' + a + ' a ' + b + ' — ou seja ' + age + ' dias de cobertura sobre os ' + v + ' de validade.',
             pCacheEmpty: n => 'Dos quais ' + n + ' sem traço GPS (nenhuma via associada pelo Waze): não concedem permissões e não contam.',
+            pCacheCut: n => '⚠️ Não foi possível guardar ' + n + ' trajeto(s): a memória local de waze.com está cheia (é partilhada com os seus outros scripts). Os mais antigos foram descartados. Voltarão no próximo carregamento se o Waze ainda os arquivar.',
+            pLegend: 'Código de cores',
+            lgUnit: ' d',
+            lgExpired: 'permissão expirada',
+            lgPerm: 'acesso permanente, sem contagem',
+            lgApprox: 'trajeto fora do arquivo: data desconhecida, no máximo a mostrada',
+            lgNone: 'nenhum trajeto conhecido aqui',
             pGpx: 'Exportação GPX e contagem regressiva',
             pGpxText: 'Cada trajeto do painel «Meus trajetos» recebe seu vencimento (<b>D-41</b>) e um botão <b>⤓</b> de exportação GPX, em resolução plena, um segmento por trecho.',
             pGpxMissing: n => n + ' trajeto(s) sem botão: o identificador não pôde ser resolvido. O WME provavelmente mudou.',
@@ -439,6 +494,13 @@
             pCache: 'Histórico em cache', pCacheNone: 'Nenhum trajeto em cache.',
             pCacheInfo: (n, a, b, age, v) => n + ' trajetos, de ' + a + ' a ' + b + ' — ou seja ' + age + ' dias de cobertura sobre os ' + v + ' de validade.',
             pCacheEmpty: n => 'Dos quais ' + n + ' sem traço GPS (nenhuma via associada pelo Waze): não concedem permissões e não contam.',
+            pCacheCut: n => '⚠️ Não foi possível guardar ' + n + ' trajeto(s): a memória local de waze.com está cheia (é partilhada com os seus outros scripts). Os mais antigos foram descartados. Voltarão no próximo carregamento se o Waze ainda os arquivar.',
+            pLegend: 'Código de cores',
+            lgUnit: ' d',
+            lgExpired: 'permissão expirada',
+            lgPerm: 'acesso permanente, sem contagem',
+            lgApprox: 'trajeto fora do arquivo: data desconhecida, no máximo a mostrada',
+            lgNone: 'nenhum trajeto conhecido aqui',
             pGpx: 'Exportação GPX e contagem decrescente',
             pGpxText: 'Cada trajeto do painel «Os meus trajetos» recebe o seu prazo (<b>D-41</b>) e um botão <b>⤓</b> de exportação GPX, em resolução plena, um segmento por troço.',
             pGpxMissing: n => n + ' trajeto(s) sem botão: o identificador não pôde ser resolvido. O WME provavelmente mudou.',
@@ -485,6 +547,13 @@
             pCache: 'היסטוריה במטמון', pCacheNone: 'אין נסיעות במטמון.',
             pCacheInfo: (n, a, b, age, v) => n + ' נסיעות, מ-' + a + ' עד ' + b + ' — כלומר ' + age + ' ימי כיסוי מתוך ' + v + ' ימי התוקף.',
             pCacheEmpty: n => 'מתוכן ' + n + ' ללא מסלול GPS (Waze לא התאים אף כביש): הן אינן מעניקות הרשאות ואינן נספרות.',
+            pCacheCut: n => '⚠️ לא ניתן היה לשמור ' + n + ' נסיעות: האחסון המקומי של waze.com מלא (הוא משותף עם שאר הסקריפטים שלך). הישנות ביותר הושלכו. הן יחזרו בטעינה הבאה אם Waze עדיין שומר אותן בארכיון.',
+            pLegend: 'מקרא צבעים',
+            lgUnit: ' ימים',
+            lgExpired: 'ההרשאה פגה',
+            lgPerm: 'גישה קבועה, ללא ספירה',
+            lgApprox: 'הנסיעה יצאה מהארכיון: התאריך אינו ידוע, לכל המאוחר המוצג',
+            lgNone: 'אין נסיעה ידועה כאן',
             pGpx: 'ייצוא GPX וספירה לאחור',
             pGpxText: 'כל נסיעה בלוח «הנסיעות שלי» מקבלת את מועד הפקיעה שלה (<b>י-41</b>) ולחצן <b>⤓</b> לייצוא GPX ברזולוציה מלאה, מקטע אחד לכל קטע נסיעה.',
             pGpxMissing: n => n + ' נסיעות ללא לחצן: לא ניתן היה לאתר את המזהה שלהן. ככל הנראה WME השתנה.',
@@ -643,13 +712,28 @@
         return { at: 0, drives: [] };
     }
 
+    // Waze descend ses coordonnées en flottants pleine précision : une quinzaine de caractères
+    // chacune une fois en JSON, pour des traces décimées à 400 m. Cinq décimales valent 1 m et
+    // divisent par deux le poids stocké — donc le risque de saturer le quota, qui est partagé
+    // par TOUS les scripts de waze.com. L'export GPX n'est pas concerné : il refait son propre
+    // appel à SessionGPS, en pleine résolution.
+    const arrondi5 = x => Math.round(x * 1e5) / 1e5;
+
     function ecrireCache(c) {
         const limite = Date.now() - PURGE_DAYS * D_MS;
         c.drives = c.drives.filter(d => d.t >= limite);
+        for (const d of c.drives) {
+            for (let i = 0; i < d.pts.length; i++) d.pts[i] = arrondi5(d.pts[i]);
+        }
+        c.tronque = 0;
         try { localStorage.setItem(LS_KEY, JSON.stringify(c)); return true; }
         catch (e) {
+            // Cette perte ne se voyait QUE dans la console : l'historique se vidait par le bas
+            // et rien à l'écran ne le disait. Le compte est mémorisé pour que le panneau
+            // l'affiche — cf. le retour d'OliveStChi, qui a cru le script fautif.
             log('quota localStorage (' + e.name + ') — on garde les 180 trajets les plus récents');
             c.drives.sort((a, b) => b.t - a.t);
+            c.tronque = Math.max(0, c.drives.length - 180);
             c.drives = c.drives.slice(0, 180);
             try { localStorage.setItem(LS_KEY, JSON.stringify(c)); return true; }
             catch (e2) { log('échec d\'écriture du cache : ' + e2.message); return false; }
@@ -824,19 +908,16 @@
             return { txt, cls, title: t('tipRetreat', new Date(v.expireLe).toLocaleDateString()) + '\n' + detail.join('\n') };
         }
         if (typeof v.borneMax === 'number') {
-            return { txt: t('bMax', v.borneMax), cls: 'wda-rouge', title: t('tipMax', v.borneMax, ageArchiveJours()) + '\n' + detail.join('\n') };
+            // Signalé par OliveStChi le 08/09/2026 : en rouge, ce badge se lisait comme une
+            // urgence alors qu'il dit une INCERTITUDE (« au plus tard »). Une couleur ne peut
+            // pas porter deux sens ; les hachures disent le doute, la couleur reste le délai.
+            return { txt: t('bMax', v.borneMax), cls: couleurClasse(v.borneMax) + ' wda-approx', title: t('tipMax', v.borneMax, ageArchiveJours()) + '\n' + detail.join('\n') };
         }
         if (v.dansRoulage) return { txt: t('bUnknown'), cls: 'wda-gris', title: detail.join('\n') };
         return { txt: t('bOutside'), cls: 'wda-gris', title: t('bOutsideTip', km1) + '\n' + detail.join('\n') };
     }
 
-    function couleurClasse(n) {
-        if (n <= 0) return 'wda-gris';
-        if (n <= 14) return 'wda-rouge';
-        if (n <= 30) return 'wda-orange';
-        if (n <= 60) return 'wda-jaune';
-        return 'wda-vert';
-    }
+    function couleurClasse(n) { return SEUILS.find(s => n <= s.max).cls; }
 
     function poserBadge() {
         const hote = document.querySelector('.location-info');
@@ -913,12 +994,10 @@
     const LAYER = 'wda-traces';
     let calqueOk = false;
 
+    // Une trace expirée passe désormais au gris et non plus au rouge vif : elle ne donne plus
+    // rien, la crier en rouge la faisait lire comme une urgence.
     function couleurPour(t0) {
-        const n = Math.ceil((t0 + VALID_DAYS * D_MS - Date.now()) / D_MS);
-        if (n <= 14) return '#e53935';
-        if (n <= 30) return '#fb8c00';
-        if (n <= 60) return '#fdd835';
-        return '#43a047';
+        return SEUILS.find(s => Math.ceil((t0 + VALID_DAYS * D_MS - Date.now()) / D_MS) <= s.max).trace;
     }
 
     function creerCalque() {
@@ -1251,7 +1330,25 @@
 #${BADGE_ID}.wda-vert{background:rgba(46,125,50,.88)}
 #${BADGE_ID}.wda-bleu{background:rgba(21,101,192,.88)}
 #${BADGE_ID}.wda-gris{background:rgba(70,70,70,.7)}
+/* Les hachures se posent SUR la couleur de tranche : « background » ci-dessus remet
+   background-image à none, cette règle qui suit le repose. L'ordre fait tout, la
+   spécificité est identique. Le doute a donc sa propre marque, la couleur garde son sens. */
+#${BADGE_ID}.wda-approx{
+  background-image:repeating-linear-gradient(135deg,rgba(0,0,0,.26) 0 4px,transparent 4px 8px)}
 .wda-pane{font-size:13px;line-height:1.45}
+/* Légende : les couleurs des pastilles ne se devinent pas — un éditeur ④ a lu « 2 jours »
+   là où le code dit 14. Les mêmes teintes que les pastilles de « Vos trajets ». */
+.wda-pane .wda-lg{display:flex;align-items:center;gap:8px;margin:3px 0;font-size:12px;color:#555}
+.wda-pane .wda-sw{flex:0 0 auto;width:26px;height:14px;border-radius:7px;background:#757575}
+.wda-pane .wda-sw.wda-rouge{background:#c62828}
+.wda-pane .wda-sw.wda-orange{background:#e67800}
+.wda-pane .wda-sw.wda-jaune{background:#c8a000}
+.wda-pane .wda-sw.wda-vert{background:#2e7d32}
+.wda-pane .wda-sw.wda-bleu{background:#1565c0}
+.wda-pane .wda-sw.wda-gris{background:#757575}
+/* Après les teintes, jamais avant : « background » les remettrait à none. */
+.wda-pane .wda-sw.wda-approx{
+  background-image:repeating-linear-gradient(135deg,rgba(0,0,0,.32) 0 4px,transparent 4px 8px)}
 .wda-pane h4{margin:10px 0 6px;font-size:13px;font-weight:600}
 .wda-pane .wda-btn{display:inline-block;padding:5px 12px;border-radius:6px;border:1px solid #1565c0;
   background:#1565c0;color:#fff;cursor:pointer;font-size:12px}
@@ -1287,6 +1384,24 @@ wz-card.drive-list-item .wda-jm.wda-bleu{background:#1565c0;font-size:14px;paddi
 wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82px}
 `;
 
+    // La légende se DÉDUIT de SEUILS : recopier les bornes à la main, c'est se donner rendez-vous
+    // avec une légende fausse au premier réglage changé.
+    function legendeHTML() {
+        const li = (cls, txt) => '<div class="wda-lg"><span class="wda-sw ' + cls + '"></span><span>' + txt + '</span></div>';
+        const u = t('lgUnit');
+        const out = [];
+        for (let i = SEUILS.length - 1; i >= 0; i--) {
+            const s = SEUILS[i];
+            if (s.max === Infinity) out.push(li(s.cls, '> ' + SEUILS[i - 1].max + u));
+            else if (s.max <= 0) out.push(li(s.cls, t('lgExpired')));
+            else out.push(li(s.cls, (SEUILS[i - 1].max + 1) + '–' + s.max + u));
+        }
+        return out.join('')
+            + li('wda-gris', t('lgNone'))
+            + li('wda-bleu', t('lgPerm'))
+            + li('wda-approx', t('lgApprox'));
+    }
+
     function buildPane() {
         const km = (zones.miles * 1609.344 / 1000).toFixed(3).replace(/0+$/, '') + ' km (' + zones.miles + ' mi)';
         return `<div class="wda-pane"${isRTL() ? ' dir="rtl"' : ''}>
@@ -1304,6 +1419,8 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
       ${LANGS.map(l => '<option value="' + l.code + '">' + l.label + '</option>').join('')}
     </select>
   </label>
+  <h4>${t('pLegend')}</h4>
+  ${legendeHTML()}
   <h4>${t('pWhat')}</h4>
   <div class="wda-note">${t('pWhatText', km, VALID_DAYS)}</div>
   <h4>${t('pCache')}</h4>
@@ -1331,7 +1448,8 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
                 }
                 c.innerHTML = t('pCacheInfo', cache.drives.length, new Date(vieux).toLocaleDateString(),
                     new Date(recent).toLocaleDateString(), ageArchiveJours(), VALID_DAYS)
-                    + (vides ? '<br>' + t('pCacheEmpty', vides) : '');
+                    + (vides ? '<br>' + t('pCacheEmpty', vides) : '')
+                    + (cache.tronque ? '<br><span class="wda-alerte">' + t('pCacheCut', cache.tronque) + '</span>' : '');
             }
         }
         const sc = $('wda-sc');

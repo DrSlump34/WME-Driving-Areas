@@ -16,7 +16,7 @@ nom doit être désinstallée : les deux scripts poseraient chacun leur badge.*
 | Situation | Badge |
 |---|---|
 | Zone parcourue, trajet daté connu | `~33 j restants ici` (couleur selon l'urgence) |
-| Zone parcourue, trajet trop ancien pour l'archive | `≤ 27 j restants ici` |
+| Zone parcourue, trajet trop ancien pour l'archive | `≤ 27 j restants ici`, **hachuré** |
 | Trajet trouvé au-delà du rayon annoncé | `~33 j restants ici (approx.)` |
 | Zone gérée, ou pays géré (CM / Champ) | `accès permanent (pays géré) · roulé il y a 57 j` |
 | Aucun trajet à portée | `hors zone parcourue` |
@@ -26,6 +26,28 @@ nom doit être désinstallée : les deux scripts poseraient chacun leur badge.*
 **⤓** produit le GPX de la trace.
 
 **Un calque optionnel** des trajets, colorés par échéance.
+
+### Le code couleur, et sa légende
+
+| Jours restants | Couleur |
+|---|---|
+| plus de 60 | vert |
+| 31 à 60 | jaune |
+| 15 à 30 | orange |
+| 1 à 14 | rouge |
+| expiré | gris |
+
+La **légende est dans le panneau**, sous « Code couleur ». Elle y est parce qu'elle manquait : un
+éditeur ④ a lu ces couleurs à l'usage et en a déduit « rouge = moins de 2 jours » — le rouge part
+en réalité de 14. Un code couleur sans légende se fait deviner, et il se devine faux.
+
+La légende est **construite à partir des seuils que le script applique**, jamais recopiée : elle ne
+peut pas se désynchroniser du code.
+
+Le badge **hachuré** (`≤ 27 j`) ne dit pas une urgence mais une **incertitude** : le trajet qui a
+ouvert la zone est sorti de l'archive de Waze, la date exacte est inconnue et celle affichée est la
+plus tardive possible. Il portait auparavant le rouge des échéances proches, ce qui mélangeait deux
+messages dans une seule couleur.
 
 ### Le cas des ayants droit permanents : ∞
 
@@ -85,9 +107,14 @@ faux négatif sur le droit lui-même.
 
 ## Les trois limites, et elles sont dites dans l'interface
 
-1. **L'archive est plus courte que le droit** — 63 jours mesurés pour 90 jours de validité. Les
-   secteurs ouverts par un trajet plus ancien ne sont datables qu'« au plus tard » (`≤ N j`).
-   Le trou se comble tout seul : le cache local garde les trajets une fois vus.
+1. **L'archive est plus courte que le droit** — 63 jours mesurés pour 90 jours de validité, et
+   59 jours confirmés le 08/09/2026 sur un second compte. Les secteurs ouverts par un trajet plus
+   ancien ne sont datables qu'« au plus tard » (`≤ N j`). Le trou se comble tout seul : le cache
+   local garde les trajets une fois vus, pendant 130 jours.
+   ⚠️ **C'est Waze qui cesse de servir ces trajets, pas le script qui les jette.** Un trajet sorti
+   de la liste « Vos trajets » n'a plus de pastille — il n'y a plus de carte où la poser — mais il
+   compte toujours dans le badge et reste dessiné sur le calque. Si la place manque vraiment dans la
+   mémoire locale du navigateur, le panneau le dit maintenant en toutes lettres.
 2. **Le polygone servi par Waze est plus large que le tampon annoncé.** Mesuré sur une zone de
    204 km² ouverte par un trajet connu : 25 % de ses points sont à plus de 6,437 km de toute trace,
    jusqu'à 11,4 km. D'où la recherche élargie (× 2,5) et la mention `(approx.)`.
@@ -150,6 +177,21 @@ sur l'image, et une route qui ne doit pas voler la vedette au sablier.
 
 ## État
 
+`0.06.00` — la légende du code couleur, le badge incertain qui ne se lit plus comme une urgence, et
+un cache deux fois plus léger dont la troncature ne se fait plus en silence. Né du retour d'usage
+d'OliveStChi, éditeur ④, le 08/09/2026.
+
+- **Légende dérivée des seuils joués** : muter un seuil déplace la légende du même coup, vérifié.
+- **Cache : 54 % de poids en moins** (880 Ko → 408 Ko sur 300 trajets × 80 points), par arrondi des
+  coordonnées à 5 décimales — 1 m, pour des traces déjà décimées à 400 m. L'export GPX reste en
+  pleine résolution : il refait son propre appel.
+- **La troncature sous quota se compte et s'affiche.** Elle ne partait qu'en console : l'historique
+  se vidait par le bas sans que rien ne le dise. ⚠️ Le quota est celui de `waze.com`, **partagé avec
+  tous les autres userscripts**.
+- Les 8 langues portent exactement les mêmes **62 clés**, vérifié par évaluation du dictionnaire.
+
+`0.05.00` — le calque se commande depuis le menu Calques de WME et au clavier.
+
 `0.04.00` — éprouvé en live le 29/08/2026.
 
 - Badge, sur quatre situations : lieu roulé le jour même (`~90 j`), lieu roulé il y a 57 jours
@@ -162,8 +204,7 @@ sur l'image, et une route qui ne doit pas voler la vedette au sablier.
 - Le ∞ des ayants droit permanents : **15 pastilles sur 15**, vues à l’écran sur la 0.04.00
   installée, infobulle « zone gérée » conforme.
 - Langues : bascule vérifiée en allemand (badge, pastille `T-90`, titres du panneau) et en hébreu
-  (badge, infobulle, pastille `י-90`, panneau en `dir="rtl"`). Les 8 langues portent exactement les
-  mêmes 51 clés.
+  (badge, infobulle, pastille `י-90`, panneau en `dir="rtl"`).
 - Export GPX complet (génération **et** téléchargement), éprouvé par l'auteur.
 
 Il reste **un** point non vérifié, et il ne peut pas l'être ici : le comportement sur un compte
