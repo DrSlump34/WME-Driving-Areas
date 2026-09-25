@@ -9,6 +9,10 @@ retirée. »*
 *Anciennement `WME Area Countdown` — le renommage date du 29/08/2026. Une installation de l'ancien
 nom doit être désinstallée : les deux scripts poseraient chacun leur badge.*
 
+![L'onglet Scripts de WDA 0.07.01 : l'état au centre de la vue, les interrupteurs, le code couleur déplié ; sur la carte, les trajets colorés par échéance](wda-0.07.01-panneau-calque.jpg)
+
+![« Vos trajets » : chaque trajet porte son échéance (J-89…) et un bouton d'export GPX ; le calque dessine les trajets, le trait se hache à l'approche de l'échéance](wda-0.07.01-pastilles-calque.jpg)
+
 ## Ce qu'il ajoute à WME
 
 **Un badge à côté du libellé de localisation**, là où l'œil lit déjà où il se trouve :
