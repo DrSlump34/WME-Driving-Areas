@@ -9,7 +9,7 @@
 // @name:he      WME Driving Areas
 // @icon         data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc2NCcgaGVpZ2h0PSc2NCcgdmlld0JveD0nMCAwIDY0IDY0Jz4gPHJlY3Qgd2lkdGg9JzY0JyBoZWlnaHQ9JzY0JyByeD0nMTInIGZpbGw9JyMxNTY1YzAnLz4gPHJlY3QgeD0nMTUnIHk9JzgnIHdpZHRoPSczNCcgaGVpZ2h0PSc2JyByeD0nMycgZmlsbD0nI2ZmZmZmZicvPiA8cmVjdCB4PScxNScgeT0nNTAnIHdpZHRoPSczNCcgaGVpZ2h0PSc2JyByeD0nMycgZmlsbD0nI2ZmZmZmZicvPiA8cGF0aCBkPSdNMTkgMTQgTDQ1IDE0IEwzNCAzMiBMNDUgNTAgTDE5IDUwIEwzMCAzMiBaJyBmaWxsPScjZmZmZmZmJy8+IDxwYXRoIGQ9J00yMyAxOCBMNDEgMTggTDMyIDMyIFonIGZpbGw9JyNmYjhjMDAnLz4gPHBhdGggZD0nTTMyIDQwIEw0MSA0NiBMMjMgNDYgWicgZmlsbD0nI2ZiOGMwMCcvPiA8cmVjdCB4PSczMScgeT0nMzAnIHdpZHRoPScyJyBoZWlnaHQ9JzEyJyBmaWxsPScjZmI4YzAwJy8+PC9zdmc+
 // @namespace    https://github.com/DrSlump34
-// @version      0.06.00
+// @version      0.07.00
 // @description  Shows how long your driving-based editing rights will last, next to the WME location label — rebuilt from your drive history. Adds a GPX export and a countdown to each drive.
 // @description:fr Affiche le temps restant sur vos droits d'édition obtenus en roulant, à côté du libellé de localisation de WME — reconstruit depuis l'historique des trajets. Ajoute un export GPX et un décompte à chaque trajet.
 // @description:de Zeigt neben der WME-Ortsanzeige, wie lange Ihre durch Fahrten erworbenen Bearbeitungsrechte noch gelten — rekonstruiert aus Ihrem Fahrtenverlauf. Mit GPX-Export und Countdown je Fahrt.
@@ -50,7 +50,9 @@
  *  LA LIMITE, ET ELLE EST STRUCTURELLE : l'archive des trajets est plus COURTE que le droit.
  *  Mesurée à 63 jours pour 90 jours de validité. Les secteurs dont le dernier passage est
  *  antérieur à l'archive sont donc datables « au plus tard », pas au jour près. Le trou se
- *  comble tout seul : le cache local garde les trajets une fois vus.
+ *  comble avec le temps : le cache local garde les trajets une fois vus, et se recharge de
+ *  lui-même au-delà de 12 h (depuis la 0.07.00 ; avant, sans un clic tous les ~60 jours, des
+ *  trajets sortaient de l'archive avant d'avoir été gardés).
  *
  *  Né d'une question d'OliveStChi (Discord Waze France, 29/08/2026).
  */
@@ -86,18 +88,23 @@
     // Si l'archive d'un compte était plus courte, la borne ne ferait que devenir plus prudente.
     const ARCHIVE_MIN_J = 59;
     // Le code couleur, en jours RESTANTS, et il n'existe qu'ici : couleurClasse() l'applique aux
-    // pastilles, couleurTrace() au calque, et la légende du panneau l'affiche. OliveStChi avait
+    // pastilles et au badge, couleurPour() au calque, et la légende du panneau l'affiche. OliveStChi avait
     // deviné « rouge = moins de 2 jours » là où le code disait 14 : sans légende, on devine, et
     // on devine faux. Une légende qui ne descend pas de la table jouée redeviendrait fausse.
     // Les teintes du calque sont plus vives que celles des pastilles : elles se lisent sur une
     // photo satellite, pas sur du blanc.
+    // `tirets` : sur le calque, la couleur ne porte pas SEULE le délai (WCAG 1.4.1) — le rouge et
+    // le vert se confondent pour un éditeur daltonien. Plus l'échéance approche, plus le trait se
+    // hache ; la légende montre le même trait.
     const SEUILS = [
-        { max: 0, cls: 'wda-gris', trace: '#9e9e9e' },
-        { max: 14, cls: 'wda-rouge', trace: '#e53935' },
-        { max: 30, cls: 'wda-orange', trace: '#fb8c00' },
-        { max: 60, cls: 'wda-jaune', trace: '#fdd835' },
-        { max: Infinity, cls: 'wda-vert', trace: '#43a047' },
+        { max: 0, cls: 'wda-gris', trace: '#9e9e9e', tirets: 'dot' },
+        { max: 14, cls: 'wda-rouge', trace: '#e53935', tirets: 'dot' },
+        { max: 30, cls: 'wda-orange', trace: '#fb8c00', tirets: 'dash' },
+        { max: 60, cls: 'wda-jaune', trace: '#fdd835', tirets: 'longdash' },
+        { max: Infinity, cls: 'wda-vert', trace: '#43a047', tirets: 'solid' },
     ];
+    // Le même trait en SVG pour la légende (les motifs d'OpenLayers, approchés).
+    const TIRETS_SVG = { solid: '', longdash: '8 3', dash: '4 3', dot: '1 3' };
     const LS_KEY = 'wda.cache.v1';
     const LS_OPT = 'wda.opts.v1';
     // Clés de la version précédente (le script s'appelait WME Area Countdown) : reprises une
@@ -156,8 +163,8 @@
             jTip: (d, n) => 'Ce trajet cesse de donner des droits le ' + d + ', soit dans ' + n + ' jour(s).',
             jTipLast: d => 'Ce trajet cesse de donner des droits le ' + d + ', dans moins d’un jour.',
             jExpTip: d => 'Ce trajet ne donne plus de droits depuis le ' + d + '.',
-            jInfZone: d => 'Votre accès ici est permanent (zone gérée) : ce décompte ne vous concerne pas. Pour information, ce trajet cesserait de donner des droits le ' + d + '.',
-            jInfPays: (n, d) => 'Vous gérez ' + n + ' pays : si ce trajet s\'y trouve, votre accès est permanent. Waze ne descend aucune géométrie de pays, cela ne peut donc pas être vérifié ici. Sinon, ce trajet cesse de donner des droits le ' + d + '.',
+            jInfZone: d => 'Votre accès ici est permanent (zone gérée) : ce décompte ne vous concerne pas. Pour information, ce trajet cesserait de donner des droits le ' + d + '.',
+            jInfPays: (n, d) => 'Vous gérez ' + n + ' pays : si ce trajet s\'y trouve, votre accès est permanent. Waze ne descend aucune géométrie de pays, cela ne peut donc pas être vérifié ici. Sinon, ce trajet cesse de donner des droits le ' + d + '.',
             bNoHist: 'historique non chargé',
             bNoHistTip: 'Ouvrez l\'onglet ' + SCRIPT_NAME + ' (icône Scripts) et lancez le chargement de l\'historique.',
             mZone: 'zone gérée', mCountry: 'pays géré',
@@ -168,49 +175,49 @@
             bMax: n => '≤ ' + n + ' j restants ici',
             bUnknown: 'zone parcourue, date inconnue', bOutside: 'hors zone parcourue',
             bOutsideTip: km => 'Aucun trajet connu à moins de ' + km + ' km du centre de la vue.',
-            tipLast: (d, n, km) => 'Dernier passage connu : le ' + d + ' (il y a ' + n + ' j, à ' + km + ' km).',
-            tipWide: km => '⚠️ Ce trajet est au-delà du rayon annoncé par WME (' + km + ' km) : il est retenu parce que le polygone de Waze vous place bien dans une zone parcourue, mais rien ne prouve que ce soit lui qui l\'ait ouverte. Celui qui l’a ouverte peut être plus ancien : la date affichée est un maximum.',
-            tipRadiusGuess: m => '⚠️ WME n’a pas donné le rayon de vos droits : ' + m + ' mi supposés. Si le vôtre est plus petit, il vous reste moins de temps qu’affiché.',
-            tipRule: n => 'Durée retenue : ' + n + ' jours après le trajet (règle du Wazeopedia), qui ajoute « ou le dernier jour du mois, selon ce qui est le plus tardif » : si cet arrondi existe, la date réelle est postérieure à celle annoncée. Le calcul porte sur le CENTRE de la vue.',
+            tipLast: (d, n, km) => 'Dernier passage connu : le ' + d + ' (il y a ' + n + ' j, à ' + km + ' km).',
+            tipWide: km => '⚠️ Ce trajet est au-delà du rayon annoncé par WME (' + km + ' km) : il est retenu parce que le polygone de Waze vous place bien dans une zone parcourue, mais rien ne prouve que ce soit lui qui l\'ait ouverte. Celui qui l’a ouverte peut être plus ancien : la date affichée est un maximum.',
+            tipRadiusGuess: m => '⚠️ WME n’a pas donné le rayon de vos droits : ' + m + ' mi supposés. Si le vôtre est plus petit, il vous reste moins de temps qu’affiché.',
+            tipRule: n => 'Durée retenue : ' + n + ' jours après le trajet (règle du Wazeopedia), qui ajoute « ou le dernier jour du mois, selon ce qui est le plus tardif » : si cet arrondi existe, la date réelle est postérieure à celle annoncée. Le calcul porte sur le CENTRE de la vue.',
             tipRetreat: d => 'Retrait estimé le ' + d + '.',
             tipPermHere: 'Ici votre accès ne dépend pas du roulage.',
-            tipMax: (max, age) => 'Vous êtes dans une zone parcourue, mais le trajet qui l’a ouverte n’est pas dans l’historique connu (qui remonte à ' + age + ' jours) : il est plus ancien, ou pas encore chargé. Il reste au plus ' + max + ' jours.',
+            tipMax: (max, age) => 'Vous êtes dans une zone parcourue, mais le trajet qui l’a ouverte n’est pas dans l’historique connu (qui remonte à ' + age + ' jours) : il est plus ancien, ou pas encore chargé. Il reste au plus ' + max + ' jours.',
             pLoad: 'Charger l\'historique des trajets', pDisplay: 'Affichage',
             pLayer: 'Dessiner les trajets, colorés par échéance',
             layerName: 'Trajets (Driving Areas)',
             scDesc: 'Afficher ou masquer les trajets',
-            pShortcut: k => 'Raccourci clavier : <b>' + k + '</b>. La case est aussi dans le menu <b>Calques</b> de WME.',
+            pShortcut: k => 'Raccourci clavier : <b>' + k + '</b>. La case est aussi dans le menu <b>Calques</b> de WME.',
             pShortcutKO: 'Raccourci clavier indisponible (touches déjà prises). La case reste accessible ici et dans le menu Calques.',
             pAsEditor: 'Ignorer mes zones gérées (voir ce que verrait un éditeur sans droits)',
             pWhat: 'Ce que dit le badge',
             pRadiusGuess: 'supposé',
-            pWhatText: (km, d) => 'Le décompte part du <b>dernier passage</b> à moins de ' + km + ' du centre de la vue, plus ' + d + ' jours. Cette durée vient du Wazeopedia, qui ajoute « ou le dernier jour du mois, selon ce qui est le plus tardif » : <b>~N j</b> ne surestime donc jamais votre temps restant.<br><br>Ce qui est <b>hachuré</b> est une borne haute (<b>≤ N j</b>) : le trajet qui a ouvert la zone est plus ancien que l’historique disponible, ou n’a été trouvé qu’au-delà du rayon annoncé par WME, ou ce rayon a dû être supposé. La date exacte est inconnue, mais elle n’est pas plus tardive que celle affichée.',
+            pWhatText: (km, d) => 'Le décompte part du <b>dernier passage</b> à moins de ' + km + ' du centre de la vue, plus ' + d + ' jours. Cette durée vient du Wazeopedia, qui ajoute « ou le dernier jour du mois, selon ce qui est le plus tardif » : <b>~N j</b> ne surestime donc jamais votre temps restant.<br><br>Ce qui est <b>hachuré</b> est une borne haute (<b>≤ N j</b>) : le trajet qui a ouvert la zone est plus ancien que l’historique disponible, ou n’a été trouvé qu’au-delà du rayon annoncé par WME, ou ce rayon a dû être supposé. La date exacte est inconnue, mais elle n’est pas plus tardive que celle affichée.',
             pCache: 'Historique en cache', pCacheNone: 'Aucun trajet en cache.',
             pCacheInfo: (n, a, b, age, v) => n + ' trajets, du ' + a + ' au ' + b + ' — soit ' + age + ' jours de couverture sur les ' + v + ' de validité.',
-            pCacheEmpty: n => 'Dont ' + n + ' sans trace GPS (aucune route appariée par Waze) : ils n\'ouvrent aucun droit et ne comptent pas dans le calcul.',
-            pCacheAt: d => 'Dernier chargement : ' + d + '. L’historique se recharge de lui-même au-delà de 12 h.',
+            pCacheEmpty: n => 'Dont ' + n + ' sans trace GPS (aucune route appariée par Waze) : ils n\'ouvrent aucun droit et ne comptent pas dans le calcul.',
+            pCacheAt: d => 'Dernier chargement : ' + d + '. L’historique se recharge de lui-même au-delà de 12 h.',
             pRetention: n => 'Ces trajets (dates et traces) sont gardés dans ce navigateur, au plus ' + n + ' jours, pour votre seul compte.',
-            pCacheNotSaved: '⚠️ L’historique n’a pas pu être enregistré : la mémoire locale de waze.com est pleine. Il reste valable jusqu’à la fermeture de la page, et sera redemandé au prochain chargement.',
+            pCacheNotSaved: '⚠️ L’historique n’a pas pu être enregistré : la mémoire locale de waze.com est pleine. Il reste valable jusqu’à la fermeture de la page, et sera redemandé au prochain chargement.',
             pClear: 'Effacer l’historique local', pClearConfirm: 'Cliquer à nouveau pour effacer', pCleared: 'Historique local effacé.',
-            pCacheCut: n => '⚠️ ' + n + ' trajet(s) n’ont pas pu être conservés : la mémoire locale de waze.com est pleine (elle est partagée avec vos autres scripts). Les plus anciens ont été jetés, et ils ne reviendront pas : l’archive de Waze ne remonte qu’environ 60 jours.',
+            pCacheCut: n => '⚠️ ' + n + ' trajet(s) n’ont pas pu être conservés : la mémoire locale de waze.com est pleine (elle est partagée avec vos autres scripts). Les plus anciens ont été jetés, et ils ne reviendront pas : l’archive de Waze ne remonte qu’environ 60 jours.',
             pLegend: 'Code couleur',
             lgUnit: ' j',
             lgExpired: 'droit expiré',
             lgPerm: 'accès permanent, aucun décompte',
-            lgApprox: 'date incertaine : au plus tard celle affichée',
+            lgApprox: 'date incertaine : au plus tard celle affichée',
             lgNone: 'aucun trajet connu ici',
             pGpx: 'Export GPX et décompte',
-            pGpxText: 'Chaque trajet du panneau « Vos trajets » reçoit son échéance (<b>J-41</b>) et un bouton <b>⤓</b> d\'export GPX, en pleine résolution, un segment par tronçon.',
-            pGpxMissing: n => n + ' trajet(s) sans bouton : leur identifiant n\'a pas pu être retrouvé. WME a probablement changé.',
-            pNotEval: 'Position non évaluée.', pAtCenter: 'Au centre de la vue :',
+            pGpxText: 'Chaque trajet du panneau « Vos trajets » reçoit son échéance (<b>J-41</b>) et un bouton <b>⤓</b> d\'export GPX, en pleine résolution, un segment par tronçon.',
+            pGpxMissing: n => n + ' trajet(s) sans bouton : leur identifiant n\'a pas pu être retrouvé. WME a probablement changé.',
+            pNotEval: 'Position non évaluée.', pAtCenter: 'Au centre de la vue :',
             pZones: (z, c) => z + ' zone(s) gérée(s), ' + c + ' pays éditable(s).',
             pLang: 'Langue', pLangAuto: l => 'Automatique (' + l + ')',
-            gList: n => 'Liste des trajets : ' + n + ' nouveaux…',
-            gTrace: (a, b) => 'Traces GPS : ' + a + ' / ' + b + '…',
+            gList: n => 'Liste des trajets : ' + n + ' nouveaux…',
+            gTrace: (a, b) => 'Traces GPS : ' + a + ' / ' + b + '…',
             gAdded: n => n + ' trajet(s) ajouté(s).', gNothing: 'Rien de nouveau.',
-            gFail: m => 'Échec : ' + m,
-            gFailedTraces: n => n + ' trace(s) GPS illisible(s) : redemandée(s) au prochain chargement.',
-            xTitle: 'Exporter ce trajet en GPX', xFail: m => 'Échec de l\'export : ' + m,
+            gFail: m => 'Échec : ' + m,
+            gFailedTraces: n => n + ' trace(s) GPS illisible(s) : redemandée(s) au prochain chargement.',
+            xTitle: 'Exporter ce trajet en GPX', xFail: m => 'Échec de l\'export : ' + m,
             xNoTrace: 'ce trajet n\'a aucune trace GPS',
         },
         en: {
@@ -587,7 +594,7 @@
         },
         he: {
             jm: n => 'י-' + n, jp: n => 'י+' + n,
-            jTip: (d, n) => 'נסיעה זו מפסיקה להעניק הרשאות בתאריך ' + d + ', כלומר בעוד ' + n + ' ימים.',
+            jTip: (d, n) => 'נסיעה זו מפסיקה להעניק הרשאות בתאריך ' + d + ', כלומר בעוד ' + (n === 1 ? 'יום אחד' : n + ' ימים') + '.',
             jTipLast: d => 'נסיעה זו מפסיקה להעניק הרשאות בתאריך ' + d + ', בעוד פחות מיום.',
             jExpTip: d => 'נסיעה זו אינה מעניקה הרשאות מאז ' + d + '.',
             jInfZone: d => 'הגישה שלכם כאן קבועה (אזור מנוהל): הספירה הזו אינה נוגעת לכם. לידיעה, נסיעה זו הייתה מפסיקה להעניק הרשאות בתאריך ' + d + '.',
@@ -596,19 +603,19 @@
             bNoHistTip: 'פתחו את הלשונית ' + SCRIPT_NAME + ' (סמל Scripts) וטענו את היסטוריית הנסיעות.',
             mZone: 'אזור מנוהל', mCountry: 'מדינה מנוהלת',
             bPerm: m => 'גישה קבועה (' + m + ')',
-            bPermDrove: (m, n) => 'גישה קבועה (' + m + ') · נסיעה לפני ' + n + ' ימים',
-            bLeft: n => 'נותרו כאן ~' + n + ' ימים', bExpired: 'ההרשאה כאן פגה (לפי החישוב)',
+            bPermDrove: (m, n) => 'גישה קבועה (' + m + ') · נסיעה לפני ' + (n === 1 ? 'יום אחד' : n + ' ימים') + '',
+            bLeft: n => 'נותרו כאן ~' + (n === 1 ? 'יום אחד' : n + ' ימים') + '', bExpired: 'ההרשאה כאן פגה (לפי החישוב)',
             bLessDay: 'נותר כאן פחות מיום אחד',
-            bMax: n => 'נותרו כאן ' + n + ' ימים לכל היותר',
+            bMax: n => 'נותרו כאן ' + (n === 1 ? 'יום אחד' : n + ' ימים') + ' לכל היותר',
             bUnknown: 'אזור שנסעתם בו, תאריך לא ידוע', bOutside: 'מחוץ לאזור הנסיעה שלכם',
             bOutsideTip: km => 'אין נסיעה ידועה במרחק של עד ' + km + ' ק"מ ממרכז המפה.',
-            tipLast: (d, n, km) => 'הנסיעה הידועה האחרונה: ' + d + ' (לפני ' + n + ' ימים, במרחק ' + km + ' ק"מ).',
+            tipLast: (d, n, km) => 'הנסיעה הידועה האחרונה: ' + d + ' (לפני ' + (n === 1 ? 'יום אחד' : n + ' ימים') + ', במרחק ' + km + ' ק"מ).',
             tipWide: km => '⚠️ נסיעה זו נמצאת מעבר לרדיוס ש-WME מדווח עליו (' + km + ' ק"מ). היא נלקחת בחשבון משום שהמצולע של Waze אכן ממקם אתכם באזור נסיעה, אך אין הוכחה שדווקא היא פתחה אותו. הנסיעה שפתחה אותו עשויה להיות ישנה יותר: התאריך המוצג הוא מקסימום.',
             tipRadiusGuess: m => '⚠️ WME לא מסר את רדיוס ההרשאות שלך: מונחים ' + m + ' מייל. אם שלך קטן יותר, נותר לך פחות זמן מהמוצג.',
-            tipRule: n => 'משך שנלקח: ' + n + ' ימים לאחר הנסיעה (כלל ה-Wazeopedia), שמוסיף «או היום האחרון של החודש, המאוחר מביניהם»: אם עיגול זה קיים, התאריך האמיתי מאוחר יותר. החישוב מתייחס למרכז המפה.',
+            tipRule: n => 'משך שנלקח: ' + (n === 1 ? 'יום אחד' : n + ' ימים') + ' לאחר הנסיעה (כלל ה-Wazeopedia), שמוסיף «או היום האחרון של החודש, המאוחר מביניהם»: אם עיגול זה קיים, התאריך האמיתי מאוחר יותר. החישוב מתייחס למרכז המפה.',
             tipRetreat: d => 'הסרה משוערת בתאריך ' + d + '.',
             tipPermHere: 'כאן הגישה שלכם אינה תלויה בנסיעה.',
-            tipMax: (max, age) => 'אתם באזור נסיעה, אך הנסיעה שפתחה אותו אינה בהיסטוריה המוכרת (שמגיעה ' + age + ' ימים אחורה): היא ישנה יותר, או שטרם נטענה. נותרו לכל היותר ' + max + ' ימים.',
+            tipMax: (max, age) => 'אתם באזור נסיעה, אך הנסיעה שפתחה אותו אינה בהיסטוריה המוכרת (שמגיעה ' + (age === 1 ? 'יום אחד' : age + ' ימים') + ' אחורה): היא ישנה יותר, או שטרם נטענה. נותרו לכל היותר ' + (max === 1 ? 'יום אחד' : max + ' ימים') + '.',
             pLoad: 'טעינת היסטוריית הנסיעות', pDisplay: 'תצוגה',
             pLayer: 'ציור הנסיעות, צבועות לפי מועד הפקיעה',
             layerName: 'נסיעות (Driving Areas)',
@@ -623,7 +630,7 @@
             pCacheInfo: (n, a, b, age, v) => n + ' נסיעות, מ-' + a + ' עד ' + b + ' — כלומר ' + age + ' ימי כיסוי מתוך ' + v + ' ימי התוקף.',
             pCacheEmpty: n => 'מתוכן ' + n + ' ללא מסלול GPS (Waze לא התאים אף כביש): הן אינן מעניקות הרשאות ואינן נספרות.',
             pCacheAt: d => 'טעינה אחרונה: ' + d + '. ההיסטוריה נטענת מחדש מעצמה אחרי 12 שעות.',
-            pRetention: n => 'נסיעות אלה (תאריכים ומסלולים) נשמרות בדפדפן זה, לכל היותר ' + n + ' ימים, לחשבונך בלבד.',
+            pRetention: n => 'נסיעות אלה (תאריכים ומסלולים) נשמרות בדפדפן זה, לכל היותר ' + (n === 1 ? 'יום אחד' : n + ' ימים') + ', לחשבונך בלבד.',
             pCacheNotSaved: '⚠️ לא ניתן היה לשמור את ההיסטוריה: האחסון המקומי של waze.com מלא. היא תקפה עד לסגירת הדף ותתבקש שוב בטעינה הבאה.',
             pClear: 'מחיקת ההיסטוריה המקומית', pClearConfirm: 'לחצו שוב כדי למחוק', pCleared: 'ההיסטוריה המקומית נמחקה.',
             pCacheCut: n => '⚠️ ' + n + ' נסיעות לא נשמרו: האחסון המקומי של waze.com מלא (הוא משותף עם הסקריפטים האחרים שלך). הישנות ביותר נמחקו והן לא יחזרו: הארכיון של Waze שומר רק כ-60 יום.',
@@ -648,6 +655,17 @@
             xNoTrace: 'לנסיעה זו אין מסלול GPS',
         }
     };
+
+    // La langue des DATES et des NOMBRES suit celle du script, pas celle du navigateur : un Chrome
+    // en en-US avec le script en français écrivait « 9/25/2026 », et « 6.437 km » (audit du
+    // 25/09/2026). La variante régionale du navigateur est gardée quand elle est de la même langue.
+    const locale = () => {
+        const nav = navigator.language || '';
+        return (!_lang.includes('-') && nav.toLowerCase().startsWith(_lang)) ? nav : _lang;
+    };
+    const dateCourte = ms => new Date(ms).toLocaleDateString(locale());
+    const dateHeure = ms => new Date(ms).toLocaleString(locale());
+    const nombre = (x, dec) => x.toLocaleString(locale(), { maximumFractionDigits: dec });
 
     const t = (key, ...args) => {
         const s = DICO[_lang] || DICO.en;
@@ -1062,10 +1080,10 @@
 
     function texteBadge(v) {
         if (!v.historique) return { txt: t('bNoHist'), cls: 'wda-gris', title: t('bNoHistTip') };
-        const km1 = (v.rayonM / 1000).toFixed(1);
+        const km1 = nombre(v.rayonM / 1000, 1);
         const detail = [];
         if (v.rouleLe) {
-            detail.push(t('tipLast', new Date(v.rouleLe).toLocaleDateString(), v.jourEcoules, Math.round(v.distM / 100) / 10));
+            detail.push(t('tipLast', dateCourte(v.rouleLe), v.jourEcoules, nombre(v.distM / 1000, 1)));
             if (v.elargi) detail.push(t('tipWide', km1));
         }
         detail.push(t('tipRule', VALID_DAYS));
@@ -1087,7 +1105,7 @@
             const cls = couleurClasse(nCouleur(r)) + (borne ? ' wda-approx' : '');
             const txt = r.etat === 'expire' ? t('bExpired') : r.etat === 'dernierJour' ? t('bLessDay')
                 : (borne ? t('bMax', r.n) : t('bLeft', r.n));
-            return { txt, cls, title: t('tipRetreat', new Date(v.expireLe).toLocaleDateString()) + '\n' + detail.join('\n') };
+            return { txt, cls, title: t('tipRetreat', dateCourte(v.expireLe)) + '\n' + detail.join('\n') };
         }
         if (typeof v.borneMax === 'number') {
             // Signalé par OliveStChi le 08/09/2026 : en rouge, ce badge se lisait comme une
@@ -1178,9 +1196,12 @@
 
     // Une trace expirée passe désormais au gris et non plus au rouge vif : elle ne donne plus
     // rien, la crier en rouge la faisait lire comme une urgence.
-    function couleurPour(t0) {
+    function seuilPour(t0) {
         const n = nCouleur(restant(echeance(t0)));
-        return SEUILS.find(s => n <= s.max).trace;
+        return SEUILS.find(s => n <= s.max);
+    }
+    function couleurPour(t0) {
+        return seuilPour(t0).trace;
     }
 
     function creerCalque() {
@@ -1190,12 +1211,13 @@
             styleRules: [{
                 style: {
                     strokeColor: '${couleur}', strokeWidth: 5, strokeOpacity: 0.85,
+                    strokeDashstyle: '${tirets}', strokeLinecap: 'round',
                     // Sans pointerEvents:none, un tracé posé sur la carte capte le clic sur toute
                     // sa surface peinte et rend les segments de WME insélectionnables.
                     pointerEvents: 'none'
                 }
             }],
-            styleContext: { couleur: ctx => ctx.feature.properties.couleur }
+            styleContext: { couleur: ctx => ctx.feature.properties.couleur, tirets: ctx => ctx.feature.properties.tirets }
         });
         try { window.W.map.setLayerIndex(window.W.map.getLayersByName(LAYER)[0], 9999); } catch (e) { }
         calqueOk = true;
@@ -1217,7 +1239,7 @@
                 feats.push({
                     id: 'wda-' + d.id, type: 'Feature',
                     geometry: { type: 'LineString', coordinates: co },
-                    properties: { couleur: couleurPour(d.t) }
+                    properties: { couleur: seuilPour(d.t).trace, tirets: seuilPour(d.t).tirets }
                 });
             }
             if (feats.length) sdk.Map.addFeaturesToLayer({ layerName: LAYER, features: feats });
@@ -1312,6 +1334,7 @@
 
     const UUID_RX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
     let gpxIndispo = 0;
+    let erreurGpx = '';   // dernier échec d'export, affiché dans le panneau jusqu'au prochain succès
 
     // WME n'écrit l'identifiant du trajet NULLE PART dans le DOM : ni attribut, ni dataset.
     // Il n'existe que comme `key` React de la carte. On remonte donc la fibre jusqu'au premier
@@ -1340,7 +1363,7 @@
     async function idsParRepli(offset) {
         if (replisCache.offset === offset) return replisCache.ids;
         const j = await getJSON(api('Archive/List') + '?count=15&minDistance=1000&offset=' + (offset || '') + '&username=');
-        const ids = ((j.archives && j.archives.objects) || []).map(a => a.id);
+        const ids = ((j.archives && j.archives.objects) || []).map(a => ({ id: a.id, t: a.startTime }));
         replisCache = { offset, ids };
         return ids;
     }
@@ -1409,10 +1432,13 @@
             const quand = enCache ? enCache.t : null;
             telecharger(nomFichier(quand, titre), await construireGPX(id, titre, quand));
             btn.textContent = '✓';
+            erreurGpx = '';
             setTimeout(() => { btn.textContent = avant; }, 2000);
         } catch (e) {
             btn.textContent = '✗';
             btn.title = t('xFail', e.message);
+            erreurGpx = t('xFail', e.message);
+            majPanneau();
             log('GPX ' + id.slice(0, 8) + ' : ' + e.message);
             setTimeout(() => { btn.textContent = avant; btn.title = t('xTitle'); }, 4000);
         } finally { btn.disabled = false; }
@@ -1431,8 +1457,15 @@
     function permanenceDuTrajet(d) {
         if (opts.commeEditeur || !d.pts.length) return null;
         if (!zones) zones = lireZones();
-        const lon = d.pts[0], lat = d.pts[1];
-        if (zones.managed.some(g => dansGeometrie(lon, lat, g))) return 'zone';
+        // ⚠️ TOUT le trajet, pas son premier point : un trajet parti d'une zone gérée et roulé
+        // au-delà ouvre bien un droit temporaire hors de la zone (audit du 25/09/2026). Les points
+        // sont ceux du cache, déjà décimés à 400 m : quelques centaines de tests au plus.
+        let toutGere = zones.managed.length > 0;
+        for (let i = 0; toutGere && i + 1 < d.pts.length; i += 2) {
+            const lon = d.pts[i], lat = d.pts[i + 1];
+            if (!zones.managed.some(g => dansGeometrie(lon, lat, g))) toutGere = false;
+        }
+        if (toutGere) return 'zone';
         if (zones.countries.length) return 'pays';
         return null;
     }
@@ -1445,11 +1478,13 @@
         if (!d) return;   // trajet pas encore en cache : rien à afficher plutôt qu'un chiffre faux
         const fin = echeance(d.t);
         const r = restant(fin);
-        const dateFin = new Date(fin).toLocaleDateString();
+        const dateFin = dateCourte(fin);
         const e = document.createElement('span');
         const perm = permanenceDuTrajet(d);
         if (perm) {
-            e.className = 'wda-jm wda-bleu';
+            // Pays géré : PRÉSUMÉ (Waze ne descend aucune géométrie de pays). Le doute se dit par les
+            // hachures, comme partout ailleurs ; seule la zone gérée, mesurée, a un ∞ plein.
+            e.className = 'wda-jm wda-bleu' + (perm === 'pays' ? ' wda-approx' : '');
             e.textContent = '∞';
             e.title = perm === 'zone' ? t('jInfZone', dateFin) : t('jInfPays', zones.countries.length, dateFin);
         } else {
@@ -1463,9 +1498,26 @@
         carte.appendChild(e);
     }
 
+    // Le repli par rang se VÉRIFIE : si la carte affiche une heure, elle doit être celle du trajet
+    // apparié — sinon un décalage de rang poserait le J-n d'un autre trajet sans que rien ne le voie.
+    // Sans heure lisible, on ne peut pas vérifier : on fait confiance au rang, comme avant.
+    function heureCoherente(carte, t0) {
+        const m = (carte.textContent || '').match(/\b(\d{1,2})[:h](\d{2})\b/);
+        if (!m || !t0) return true;
+        const d = new Date(t0);
+        return +m[1] === d.getHours() && +m[2] === d.getMinutes();
+    }
+    let repliEchecA = 0;          // dernier échec du repli : on ne le relance pas avant une minute
+    let posesEnCours = false;     // le sondage d'une seconde ne doit pas lancer deux passes à la fois
+
     async function poserBoutonsGPX() {
+        if (posesEnCours) return;
         const cartes = document.querySelectorAll('wz-card.drive-list-item');
         if (!cartes.length) return;
+        posesEnCours = true;
+        try { await poserBoutonsGPXPasse(cartes); } finally { posesEnCours = false; }
+    }
+    async function poserBoutonsGPXPasse(cartes) {
         let repli = null;
         gpxIndispo = 0;
         for (let i = 0; i < cartes.length; i++) {
@@ -1474,10 +1526,15 @@
             let id = idParFibre(c);
             if (!id) {
                 if (!repli) {
-                    try { repli = await idsParRepli(offsetAffiche()); }
-                    catch (e) { repli = []; log('repli d\'appariement : ' + e.message); }
+                    // Un échec relançait Archive/List à CHAQUE seconde du sondage (~3 600 par heure).
+                    if (Date.now() - repliEchecA < 60000) repli = [];
+                    else {
+                        try { repli = await idsParRepli(offsetAffiche()); }
+                        catch (e) { repli = []; repliEchecA = Date.now(); log('repli d\'appariement : ' + e.message); }
+                    }
                 }
-                id = repli[i] || null;
+                const r = repli[i];
+                id = (r && heureCoherente(c, r.t)) ? r.id : null;
             }
             if (!id) { gpxIndispo++; continue; }
             const titre = ((c.querySelector('.list-item-card-title') || {}).textContent || 'trajet').trim();
@@ -1527,6 +1584,7 @@
    là où le code dit 14. Les mêmes teintes que les pastilles de « Vos trajets ». */
 .wda-pane .wda-lg{display:flex;align-items:center;gap:8px;margin:3px 0;font-size:12px;color:#555}
 .wda-pane .wda-sw{flex:0 0 auto;width:26px;height:14px;border-radius:7px;background:#757575}
+.wda-pane .wda-tr{flex:0 0 26px;display:inline-block}
 .wda-pane .wda-sw.wda-rouge{background:#c62828}
 .wda-pane .wda-sw.wda-orange{background:#e67800}
 .wda-pane .wda-sw.wda-jaune{background:#c8a000}
@@ -1566,6 +1624,9 @@ wz-card.drive-list-item .wda-jm.wda-gris{background:#757575}
 /* ∞ : accès permanent, aucun décompte. Même bleu que le badge de la carte, pour que les deux
    se lisent comme la même information. Le glyphe étant plus large que haut, on l'agrandit. */
 wz-card.drive-list-item .wda-jm.wda-bleu{background:#1565c0;font-size:14px;padding:0 8px}
+/* Après les teintes : « background » les remettrait à none. Les hachures disent le doute. */
+wz-card.drive-list-item .wda-jm.wda-approx{
+  background-image:repeating-linear-gradient(135deg,rgba(0,0,0,.28) 0 4px,transparent 4px 8px)}
 /* Sans cette marge, le libellé passerait sous l'échéance et le bouton. Mesurée, pas estimée :
    le bouton occupe 8→34 px depuis le bord, la pastille 40→78 ; 82 laisse 4 px de jeu et rend
    au titre les 112 px dont il a besoin (à 96 px il manquait 1 pixel et la date était coupée). */
@@ -1575,14 +1636,16 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
     // La légende se DÉDUIT de SEUILS : recopier les bornes à la main, c'est se donner rendez-vous
     // avec une légende fausse au premier réglage changé.
     function legendeHTML() {
-        const li = (cls, txt) => '<div class="wda-lg"><span class="wda-sw ' + cls + '"></span><span>' + txt + '</span></div>';
+        const trait = s => '<svg class="wda-tr" width="26" height="6" aria-hidden="true"><line x1="2" y1="3" x2="24" y2="3" stroke="#555" stroke-width="3" stroke-linecap="round"'
+            + (TIRETS_SVG[s.tirets] ? ' stroke-dasharray="' + TIRETS_SVG[s.tirets] + '"' : '') + '/></svg>';
+        const li = (cls, txt, s) => '<div class="wda-lg"><span class="wda-sw ' + cls + '"></span>' + (s ? trait(s) : '<span class="wda-tr"></span>') + '<span>' + txt + '</span></div>';
         const u = t('lgUnit');
         const out = [];
         for (let i = SEUILS.length - 1; i >= 0; i--) {
             const s = SEUILS[i];
-            if (s.max === Infinity) out.push(li(s.cls, '> ' + SEUILS[i - 1].max + u));
-            else if (s.max <= 0) out.push(li(s.cls, t('lgExpired')));
-            else out.push(li(s.cls, (SEUILS[i - 1].max + 1) + '–' + s.max + u));
+            if (s.max === Infinity) out.push(li(s.cls, '> ' + SEUILS[i - 1].max + u, s));
+            else if (s.max <= 0) out.push(li(s.cls, t('lgExpired'), s));
+            else out.push(li(s.cls, (SEUILS[i - 1].max + 1) + '–' + s.max + u, s));
         }
         return out.join('')
             + li('wda-gris', t('lgNone'))
@@ -1591,13 +1654,13 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
     }
 
     function buildPane() {
-        const km = (zones.miles * 1609.344 / 1000).toFixed(3).replace(/0+$/, '') + ' km (' + zones.miles + ' mi'
+        const km = nombre(zones.miles * 1.609344, 3) + ' km (' + nombre(zones.miles, 2) + ' mi'
             + (zones.rayonLu === false ? ', ' + t('pRadiusGuess') : '') + ')';
         return `<div class="wda-pane"${isRTL() ? ' dir="rtl"' : ''}>
   <h4>${SCRIPT_NAME} <span class="wda-note">v${VERSION}</span></h4>
-  <div class="wda-etat" id="wda-etat">…</div>
+  <div class="wda-etat" id="wda-etat" role="status">…</div>
   <button class="wda-btn" id="wda-load">${t('pLoad')}</button>
-  <div class="wda-note" id="wda-prog" style="margin-top:6px"></div>
+  <div class="wda-note" id="wda-prog" role="status" style="margin-top:6px"></div>
   <h4>${t('pDisplay')}</h4>
   <label><input type="checkbox" id="wda-calque"> ${t('pLayer')}</label>
   <div class="wda-note" id="wda-sc"></div>
@@ -1636,9 +1699,9 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
                     if (d.t > recent) recent = d.t;
                     if (!d.pts.length) vides++;
                 }
-                c.innerHTML = t('pCacheInfo', cache.drives.length, new Date(vieux).toLocaleDateString(),
-                    new Date(recent).toLocaleDateString(), ageArchiveJours(), VALID_DAYS)
-                    + (cache.at ? '<br>' + t('pCacheAt', new Date(cache.at).toLocaleString()) : '')
+                c.innerHTML = t('pCacheInfo', cache.drives.length, dateCourte(vieux),
+                    dateCourte(recent), ageArchiveJours(), VALID_DAYS)
+                    + (cache.at ? '<br>' + t('pCacheAt', dateHeure(cache.at)) : '')
                     + (vides ? '<br>' + t('pCacheEmpty', vides) : '')
                     + '<br>' + t('pRetention', PURGE_DAYS)
                     + (cache.tronque ? '<br><span class="wda-alerte">' + t('pCacheCut', cache.tronque) + '</span>' : '')
@@ -1651,7 +1714,7 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
         // Un bouton qui cesse d'apparaître doit se voir : sans cette ligne, une évolution de
         // WME casserait l'export en silence.
         const g = $('wda-gpx-etat');
-        if (g) g.textContent = gpxIndispo ? t('pGpxMissing', gpxIndispo) : '';
+        if (g) g.textContent = [gpxIndispo ? t('pGpxMissing', gpxIndispo) : '', erreurGpx].filter(Boolean).join(' ');
 
         const e = $('wda-etat');
         if (e) {
@@ -1659,6 +1722,7 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
             if (!v) e.textContent = t('pNotEval');
             else if (!v.historique) e.textContent = t('bNoHist');
             else e.innerHTML = '<b>' + t('pAtCenter') + '</b> ' + texteBadge(v).txt
+                + (v.restant && !v.permanent && v.restant.etat !== 'expire' ? '<br><span class="wda-note">' + t('tipRetreat', dateCourte(v.expireLe)) + '</span>' : '')
                 + (z.managed.length ? '<br><span class="wda-note">' + t('pZones', z.managed.length, z.countries.length) + '</span>' : '');
         }
     }
@@ -1738,6 +1802,9 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
             // libellé resterait et une seconde case apparaîtrait à la langue suivante.
             poserCommandesCalque();
             recalculer(true);
+            // Le panneau vient d'être reconstruit : on rend le focus au sélecteur qu'on réglait.
+            const nv = paneEl.querySelector('#wda-lang');
+            if (nv) nv.focus();
         });
     }
 

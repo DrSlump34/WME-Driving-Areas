@@ -17,7 +17,8 @@ nom doit être désinstallée : les deux scripts poseraient chacun leur badge.*
 |---|---|
 | Zone parcourue, trajet daté connu | `~33 j restants ici` (couleur selon l'urgence) |
 | Zone parcourue, trajet trop ancien pour l'archive | `≤ 27 j restants ici`, **hachuré** |
-| Trajet trouvé au-delà du rayon annoncé | `~33 j restants ici (approx.)` |
+| Trajet trouvé au-delà du rayon annoncé | `≤ 33 j restants ici`, **hachuré** (borne haute) |
+| Dernier jour du droit | `< 1 j restant ici`, rouge |
 | Zone gérée, ou pays géré (CM / Champ) | `accès permanent (pays géré) · roulé il y a 57 j` |
 | Aucun trajet à portée | `hors zone parcourue` |
 
@@ -34,7 +35,7 @@ nom doit être désinstallée : les deux scripts poseraient chacun leur badge.*
 | plus de 60 | vert |
 | 31 à 60 | jaune |
 | 15 à 30 | orange |
-| 1 à 14 | rouge |
+| 0 à 14 (le dernier jour se lit « < 1 j ») | rouge |
 | expiré | gris |
 
 La **légende est dans le panneau**, sous « Code couleur ». Elle y est parce qu'elle manquait : un
@@ -45,8 +46,8 @@ La légende est **construite à partir des seuils que le script applique**, jama
 peut pas se désynchroniser du code.
 
 Le badge **hachuré** (`≤ 27 j`) ne dit pas une urgence mais une **incertitude** : le trajet qui a
-ouvert la zone est sorti de l'archive de Waze, la date exacte est inconnue et celle affichée est la
-plus tardive possible. Il portait auparavant le rouge des échéances proches, ce qui mélangeait deux
+ouvert la zone est sorti de l'archive de Waze, ou n'a été trouvé qu'au-delà du rayon annoncé, ou ce
+rayon a dû être supposé. La date exacte est inconnue, et celle affichée est la plus tardive possible. Il portait auparavant le rouge des échéances proches, ce qui mélangeait deux
 messages dans une seule couleur.
 
 ### Le cas des ayants droit permanents : ∞
@@ -109,18 +110,18 @@ faux négatif sur le droit lui-même.
 
 1. **L'archive est plus courte que le droit** — 63 jours mesurés pour 90 jours de validité, et
    59 jours confirmés le 08/09/2026 sur un second compte. Les secteurs ouverts par un trajet plus
-   ancien ne sont datables qu'« au plus tard » (`≤ N j`). Le trou se comble tout seul : le cache
-   local garde les trajets une fois vus, pendant 130 jours.
+   ancien ne sont datables qu'« au plus tard » (`≤ N j`). Le trou se comble avec le temps : le cache
+   local garde les trajets une fois vus, pendant 130 jours, et se recharge seul au-delà de 12 h.
    ⚠️ **C'est Waze qui cesse de servir ces trajets, pas le script qui les jette.** Un trajet sorti
    de la liste « Vos trajets » n'a plus de pastille — il n'y a plus de carte où la poser — mais il
    compte toujours dans le badge et reste dessiné sur le calque. Si la place manque vraiment dans la
    mémoire locale du navigateur, le panneau le dit maintenant en toutes lettres.
 2. **Le polygone servi par Waze est plus large que le tampon annoncé.** Mesuré sur une zone de
    204 km² ouverte par un trajet connu : 25 % de ses points sont à plus de 6,437 km de toute trace,
-   jusqu'à 11,4 km. D'où la recherche élargie (× 2,5) et la mention `(approx.)`.
+   jusqu'à 11,4 km. D'où la recherche élargie (× 2,5), dont le résultat est une borne haute : `≤ N j`, hachuré.
 3. **La règle des 90 jours vient du Wazeopedia**, qui ajoute « ou le dernier jour du mois, selon ce
    qui est le plus tardif ». Si cet arrondi existe, la date réelle est *postérieure* à celle
-   annoncée : le badge ne surestime jamais le temps restant.
+   annoncée : `~N j` ne surestime jamais le temps restant, et le décompte s'arrondit vers le bas.
 
 Par ailleurs, `minDistance=0` est important : le défaut de WME (1000) écarte 41 % des trajets, et
 ceux-là ouvrent des droits comme les autres. Les trajets à `totalRoadMeters = 0` n'ont, eux, aucune
@@ -176,6 +177,28 @@ Discord), calé sur le style de la famille, avec les deux pièges propres à ce 
 sur l'image, et une route qui ne doit pas voler la vedette au sablier.
 
 ## État
+
+`0.07.00` — un audit complet (25/09/2026, 22 agents) : 18 défauts, dont 5 majeurs, tous traités.
+Trois cas pouvaient annoncer **plus de temps qu'il n'en restait** :
+
+- **Le temps restant s'arrondit vers le bas**, une seule règle pour le badge, le calque et les
+  pastilles. 9 h restantes affichaient « 1 j », 14,2 j affichaient 15 (orange au lieu de rouge).
+  Le dernier jour a son propre état, « < 1 j », rouge.
+- **La recherche élargie est une borne haute** (`≤ N j`, hachurée), plus une estimation pleine.
+- **Le cache appartient à un compte** : un second compte dans le même navigateur n'hérite plus des
+  trajets du premier.
+
+Et aussi : l'historique se recharge seul au-delà de 12 h ; une trace illisible se redemande au lieu
+d'être comptée ; la borne `≤ N j` se resserre sur la profondeur mesurée de l'archive ; un rayon
+supposé se dit ; le décompte vieillit avec l'horloge ; le changement d'heure ne repousse plus la
+date ; le ∞ exige que tout le trajet soit en zone gérée, et le ∞ présumé est hachuré ; texte foncé
+sur jaune et orange ; sur le calque, un trait par tranche en plus de la couleur ; dates et nombres
+dans la langue du script ; un bouton pour effacer l'historique local ; les anciennes clés `wac.*`
+retirées.
+
+**Bancs** : ils tournent désormais sur le code servi, sans rien recopier, et un banc de calcul
+tient la règle « jamais plus de temps qu'il n'en reste » ; chaque contrôle a été vu échouer sur la
+0.06.00. Voir `bancs/README.md`.
 
 `0.06.00` — la légende du code couleur, le badge incertain qui ne se lit plus comme une urgence, et
 un cache deux fois plus léger dont la troncature ne se fait plus en silence. Né du retour d'usage

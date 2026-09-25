@@ -1,10 +1,11 @@
 # WDA — WME Driving Areas · Dossier de spécifications
 
-> **Version du code décrite ici : 0.05.00** (lue dans le bloc `==UserScript==` de
+> **Version du code décrite ici : 0.07.00** (lue dans le bloc `==UserScript==` de
 > `WME-Driving-Areas.user.js`).
 > Diffusé sur **GreasyFork 593493**, dépôt `github.com/DrSlump34/WME-Driving-Areas`,
 > fil Discuss **411120**.
 > *Anciennement `WME Area Countdown` — renommé le 29/08/2026.*
+> La 0.07.00 traite l'audit du 25/09/2026 (18 défauts, dont 5 majeurs ; rapport local, hors dépôt).
 
 ---
 
@@ -94,7 +95,8 @@ imprécision sur le rayon ne coûte jamais un faux négatif sur le droit lui-mê
 |---|---|
 | Zone parcourue, trajet daté connu | `~33 j restants ici` (couleur selon l'urgence) |
 | Zone parcourue, trajet trop ancien pour l'archive | `≤ 27 j restants ici`, **hachuré** |
-| Trajet trouvé au-delà du rayon annoncé | `~33 j restants ici (approx.)` |
+| Trajet trouvé au-delà du rayon annoncé, ou rayon supposé | `≤ 33 j restants ici`, **hachuré** (borne haute) |
+| Dernier jour | `< 1 j restant ici`, rouge |
 | Zone gérée, ou pays géré (CM / Champ) | `accès permanent (pays géré) · roulé il y a 57 j` |
 | Aucun trajet à portée | `hors zone parcourue` |
 
@@ -167,6 +169,9 @@ Trajets colorés par échéance. Commandé depuis le **menu Calques de WME** et 
 | `PAGE` | 50 | `count` max accepté par `Archive/List` — **99 passe, 100 lève** |
 | `MOVE_DEBOUNCE` | 700 ms | Anti-rebond du recalcul |
 | `ELARGI` | 2,5 | Facteur d'élargissement de la recherche (§ 4.3) |
+| `ARCHIVE_MIN_J` | 59 | Profondeur mesurée de l'archive des trajets (63 j le 29/08, 59 le 08/09) : plancher de la borne `≤ N j` |
+| `RAFRAICHIR_MS` | 5 min | Le décompte se refait avec l'horloge (et au retour sur l'onglet) |
+| `AUTO_MS` | 12 h | Un historique déjà chargé une fois se recharge seul au-delà |
 | `SEUILS` | 0 / 14 / 30 / 60 / ∞ | Le code couleur, en jours **restants** (§ 3.1 bis) |
 
 ### 3.1 bis Le code couleur, et sa légende
@@ -211,11 +216,24 @@ redemanderait.
 4. `dansRoulage` : le point est-il dans un polygone de type `drive` ?
 5. `dernierPassage(lon, lat, rayon)` : le trajet **le plus récent** passant à moins du rayon.
 6. Si rien n'est trouvé **mais** que le point est dans la zone de roulage : **on recommence avec
-   `rayon × ELARGI`**, et le badge le dit (`(approx.)`).
+   `rayon × ELARGI`**. Le résultat est une **borne haute** — le trajet qui a ouvert la zone peut
+   être plus ancien — et s'affiche comme telle : **`≤ N j`, hachuré** (0.07.00 ; la 0.06.00 disait
+   `~N j (approx.)` en couleur pleine). Un candidat élargi déjà expiré ne prouve rien : on retombe
+   sur la borne de l'archive.
+7. Un rayon **supposé** (WME n'a pas donné `editableMiles`, `zones.rayonLu === false`) fait lui
+   aussi du verdict une borne hachurée, et l'infobulle le dit.
+
+⭐⭐⭐⭐ **Le temps restant a UNE règle** (`echeance`, `restant`, `nCouleur`), lue par le badge, le
+calque et les pastilles. Arrondi **vers le bas** ; le dernier jour a son propre état, « `< 1 j` »,
+**rouge** — jamais « expiré ». La 0.06.00 arrondissait vers le haut, à trois endroits : 9 h
+affichaient « 1 j », 14,2 j affichaient 15 (orange au lieu de rouge). L'échéance est **la plus
+précoce** de « + 90 × 24 h » et de « + 90 jours de calendrier » : elles diffèrent d'une heure autour
+d'un changement d'heure, et la règle réelle de Waze n'est pas mesurée.
 
 Le verdict porte `permanent`, `motif`, `dansRoulage`, `rayonM`, `historique`, puis, selon le cas,
-`rouleLe`, `distM`, `elargi`, `jourEcoules`, `expireLe`, `joursRestants` — ou `borneMax` quand
-seule une borne supérieure est connue.
+`rouleLe`, `distM`, `elargi`, `jourEcoules`, `expireLe`, `restant`, `joursRestants`,
+`rayonDevine` — ou `borneMax` quand seule une borne supérieure est connue :
+`borneMax = 90 − max(âge du plus vieux trajet en cache, ARCHIVE_MIN_J)`.
 
 ⚠️ Dans `dernierPassage`, le cas d'une **trace réduite à un point** après décimation est traité à
 part : sans lui, la boucle sur les segments ne s'exécute jamais et **le trajet est ignoré en
@@ -225,14 +243,16 @@ silence**.
 
 1. **L'archive est plus courte que le droit** — **63 jours mesurés pour 90 jours de validité**. Les
    secteurs ouverts par un trajet plus ancien ne sont datables qu'« au plus tard » (`≤ N j`, calculé
-   par `ageArchiveJours`). *Le trou se comble tout seul : le cache local garde les trajets une fois
-   vus.*
+   sur `max(ageArchiveJours, ARCHIVE_MIN_J)`). Le trou se comble avec le temps : le cache garde les
+   trajets une fois vus, **et se recharge seul au-delà de 12 h** (0.07.00). Avant, sans un clic
+   tous les ~60 jours, des trajets sortaient de l'archive de Waze avant d'avoir été gardés.
 2. **Le polygone servi par Waze est plus large que le tampon annoncé.** Mesuré sur une zone de
    204 km² ouverte par un trajet connu : **25 % de ses points sont à plus de 6,437 km de toute
-   trace, jusqu'à 11,4 km.** D'où `ELARGI = 2,5` et la mention `(approx.)`.
+   trace, jusqu'à 11,4 km.** D'où `ELARGI = 2,5`, et une borne `≤ N j` hachurée.
 3. **La règle des 90 jours vient du Wazeopedia**, qui ajoute « ou le dernier jour du mois, selon ce
    qui est le plus tardif ». Si cet arrondi existe, la date réelle est **postérieure** à celle
-   annoncée : **le badge ne surestime jamais le temps restant.**
+   annoncée : **`~N j` ne surestime jamais le temps restant** ; tout ce qui est hachuré est une
+   borne haute.
 
 ---
 
@@ -261,8 +281,9 @@ d'`Archive/List`).
 ### 6.1 L'état
 
 ```js
-cache = { at, drives: [ { id, t, bb:[minLon,minLat,maxLon,maxLat], pts:[lon,lat,…] } ] }
-zones = { drive: [geom], managed: [geom], miles, countries: [id…] }
+cache = { at, owner, drives: [ { id, t, bb:[minLon,minLat,maxLon,maxLat], pts:[lon,lat,…] } ],
+          aReprendre: [ { id, startTime, totalRoadMeters } ], tronque, echecEcriture }
+zones = { drive: [geom], managed: [geom], miles, rayonLu, countries: [id…] }
 opts  = { commeEditeur: false, calque: false, langPref: 'auto' }
 ```
 
@@ -270,10 +291,14 @@ opts  = { commeEditeur: false, calque: false, langPref: 'auto' }
 
 `localStorage` : `wda.cache.v1` et `wda.opts.v1`.
 
-**Reprise de l'ancien nom** : `wac.cache.v1` / `wac.opts.v1` sont relues une fois, pour ne pas jeter
-un historique déjà téléchargé. ⚠️ Le cache repris est **réécrit immédiatement** sous la nouvelle
-clé : sinon la migration n'aurait lieu qu'au prochain chargement manuel, et un utilisateur qui n'y
-touche pas garderait **deux copies divergentes**.
+⭐ **Le cache appartient à un compte** (`owner` = `W.loginManager.user.attributes.id`, relevé dans
+WME le 25/09/2026). Un autre compte ouvert dans le même navigateur repart d'un cache vide ; un cache
+d'avant la 0.07.00, sans propriétaire, est adopté par le compte courant. La purge des plus de
+`PURGE_DAYS` se fait **aussi à la lecture**. Le panneau dit la durée de conservation, et un bouton
+**« Effacer l'historique local »** (deux clics, sans boîte de dialogue) la vide.
+
+**Reprise de l'ancien nom** : `wac.cache.v1` / `wac.opts.v1` sont relues une fois, **réécrites** sous
+la nouvelle clé, puis **retirées** (0.07.00 : elles restaient, copies mortes dans le quota partagé).
 
 ### 6.3 Dégradation sous quota
 
@@ -294,19 +319,26 @@ en cache »). Auparavant elle ne partait qu'en console : l'historique se vidait 
 l'écran ne le disait. Un utilisateur ne pouvait pas distinguer cette perte-là de la fenêtre courte
 de l'archive Waze — et c'est exactement la confusion qu'a vécue OliveStChi. Le compteur est remis à
 zéro dès qu'une écriture repasse sans tronquer, donc l'alerte ne survit pas au problème.
+Les trajets jetés **ne reviennent pas** (l'archive ne remonte qu'environ 60 jours) : le message le
+dit depuis la 0.07.00. Si même la seconde écriture échoue, c'est un **historique non enregistré**
+(`cache.echecEcriture`), et le panneau le dit comme tel — pas comme une troncature.
 
 ### 6.4 Le chargement de l'historique
 
 **Incrémental** : le premier chargement prend une vingtaine de secondes (une requête par trajet),
 les suivants ne demandent que ce qui manque. `CONCURRENCE = 4` requêtes `SessionGPS` en parallèle.
+Une trace **illisible** (erreur réseau, réponse d'une autre forme, trace vide pour un trajet qui a
+roulé des routes) n'est **pas** comptée comme ajoutée : elle part dans `cache.aReprendre` et se
+redemande **en premier** au chargement suivant. Seul un trajet à `totalRoadMeters = 0` est mémorisé
+sans trace.
 
 ---
 
 ## 7. Internationalisation
 
-Huit langues (`fr`, `en`, `de`, `es`, `it`, `pt-BR`, `pt-PT`, `he`), **exactement les mêmes 51
-clés**, sur le modèle de WCT. Détection sur `W.userscripts.state.locale`, repli sur l'anglais,
-langue forçable dans le panneau.
+Huit langues (`fr`, `en`, `de`, `es`, `it`, `pt-BR`, `pt-PT`, `he`), **exactement les mêmes 72
+clés** (0.07.00), sur le modèle de WCT. Détection sur `W.userscripts.state.locale`, repli sur l'anglais,
+langue forçable dans le panneau. Les **dates et les nombres** suivent la langue du script, pas celle du navigateur (0.07.00 : un Chrome en en-US écrivait « 9/25/2026 » sous un script en français).
 
 ⚠️ Le **portugais** est traité à part : seul `br` distingue le brésilien.
 
@@ -353,9 +385,13 @@ badge et les mesures deviennent trompeuses.** Le test propre se fait sur une pag
 
 Le panneau vit derrière l'icône **Scripts** `</>` (⏳).
 
-**Il n'y a pas de harnais de test automatisé** — c'est une différence assumée avec WCT et WNA, à la
-mesure du projet. Toutes les vérifications de la 0.04.00 ont été faites **en direct dans WME** et
-sont consignées dans le README.
+**Les bancs** (`bancs/`, voir `bancs/README.md`) tournent avec Node sur le fichier **servi** :
+`charger.js` l'exécute dans une machine virtuelle et en publie les fonctions internes, sans rien
+recopier. `banc-calcul` tient la règle du §8.4 (jamais plus de temps qu'il n'en reste) sur des cas
+chiffrés ; `banc-seuils` les couleurs et le contraste des pastilles ; `banc-cache` le cache, le
+quota, le propriétaire et les traces à reprendre ; `banc-i18n` les 8 langues ; `banc-rendu` écrit
+une page à regarder. ⚠️ La 0.06.00 avait des bancs qui recopiaient `VALID_DAYS` : une durée portée
+à 120 jours les passait tous. Chaque contrôle de la 0.07.00 a été vu **échouer** sur la 0.06.00.
 
 ---
 
@@ -381,3 +417,6 @@ route qui ne doit pas voler la vedette au sablier**.
 - L'appariement React (§ 5) **cessera de marcher le jour où WME changera** : le compteur du panneau
   est là pour que cela se voie tout de suite.
 - Le dossier `WME-Area-Countdown\` (ancien nom) **reste à supprimer** quand l'auteur le dira.
+- **Non mesuré** (audit du 25/09/2026) : la règle réelle de Waze (UTC ou jour local, arrondi « dernier
+  jour du mois ») ; la durée de vie des cartes de « Vos trajets » ; Alt+D face à Firefox ; le
+  comportement hors du serveur ROW ; le rendu bidi réel de l'hébreu dans la barre du haut.
