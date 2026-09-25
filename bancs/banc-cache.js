@@ -106,5 +106,35 @@ console.log('--- 5. Les clés de l\'ancien nom (wac.*) sont retirées une fois r
     eq('wac.opts.v1 retirée, wda.opts.v1 écrite', ['wac.opts.v1' in W.stockage, 'wda.opts.v1' in W.stockage], [false, true]);
 }
 
-console.log(ko ? '\n' + ko + ' ECHEC(S)' : '\nTOUT PASSE');
-process.exit(ko ? 1 : 0);
+console.log('--- 6. Une trace illisible n\'est ni « ajoutée », ni oubliée : elle se redemande ---');
+(async () => {
+    // Deux trajets : « bon » rend sa trace ; « rate » échoue la première fois (HTTP 500), puis passe.
+    // Un troisième, « vide », n'a roulé aucune route (0 m) : mémorisé sans trace, sans échec.
+    let tentativeRate = 0;
+    const trace = { archiveSessions: { objects: [{ driveParts: [{ geometry: { coordinates: [[2, 48], [2.01, 48]] } }] }] } };
+    const reponse = (ok, corps) => Promise.resolve({ ok, status: ok ? 200 : 500, json: () => Promise.resolve(corps) });
+    const reseau = url => {
+        if (/Archive\/List/.test(url)) {
+            const offset = +(url.match(/offset=(\d+)/) || [0, 0])[1];
+            return reponse(true, { archives: { objects: offset ? [] : [
+                { id: 'bon', startTime: Date.now() - 2 * J, totalRoadMeters: 900 },
+                { id: 'rate', startTime: Date.now() - 3 * J, totalRoadMeters: 1200 },
+                { id: 'vide', startTime: Date.now() - 4 * J, totalRoadMeters: 0 }] } });
+        }
+        if (/id=rate/.test(url)) return ++tentativeRate === 1 ? reponse(false, {}) : reponse(true, trace);
+        if (/id=vide/.test(url)) return reponse(true, { archiveSessions: { objects: [] } });
+        return reponse(true, trace);
+    };
+    const W = charger(FICHIER, { window: compte(1), fetch: reseau });
+    const c = { at: 0, drives: [], owner: 1 };
+    W.regler({ cache: c });
+    const r1 = await W.chargerHistorique();
+    eq('1er chargement : 2 ajoutés (bon, vide), 1 échec', [r1.ajoutes, r1.echecs], [2, 1]);
+    eq('l\'échec est gardé pour être repris', (W.etat().cache.aReprendre || []).map(a => a.id), ['rate']);
+    const r2 = await W.chargerHistorique();
+    eq('2e chargement : la trace ratée est reprise et ajoutée', [r2.ajoutes, r2.echecs], [1, 0]);
+    eq('les trois trajets sont en cache', W.etat().cache.drives.map(d => d.id).sort(), ['bon', 'rate', 'vide']);
+    eq('plus rien à reprendre', W.etat().cache.aReprendre, []);
+    console.log(ko ? '\n' + ko + ' ECHEC(S)' : '\nTOUT PASSE');
+    process.exit(ko ? 1 : 0);
+})();

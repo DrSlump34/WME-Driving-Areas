@@ -20,7 +20,7 @@ const EXPOSE = [
     'restant', 'echeance', 'nCouleur', 'ARCHIVE_MIN_J', 'traceDe', 'chargerHistorique', 'proprietaire',
 ];
 
-function charger(fichier, { stockage = {}, maintenant = null, window: fenetre = {} } = {}) {
+function charger(fichier, { stockage = {}, maintenant = null, window: fenetre = {}, fetch: reseau = null } = {}) {
     let src = fs.readFileSync(fichier, 'utf8');
     const ancre = '    const init = async () => {';
     if (!src.includes(ancre)) throw new Error('ancre « const init » introuvable dans ' + fichier);
@@ -49,7 +49,7 @@ function charger(fichier, { stockage = {}, maintenant = null, window: fenetre = 
     const RealDate = Date;
     const ctx = {
         console, localStorage, document, navigator: { language: 'fr-FR' }, setTimeout, clearTimeout,
-        setInterval: () => 0, fetch: () => Promise.reject(new Error('pas de réseau au banc')),
+        setInterval: () => 0, fetch: reseau || (() => Promise.reject(new Error('pas de réseau au banc'))),
         URL, Blob: function () {}, Math, JSON, Object, Array, Promise, Error, Set, Map, String, Number,
         Intl, parseInt, parseFloat, isNaN,
     };

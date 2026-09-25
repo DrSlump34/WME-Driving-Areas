@@ -73,6 +73,7 @@
     const PAGE = 50;                // count max accepté par Archive/List (99 passe, 100 lève)
     const MOVE_DEBOUNCE = 700;      // anti-rebond du recalcul sur déplacement de carte
     const RAFRAICHIR_MS = 5 * 60000; // le décompte se refait toutes les 5 min : il vieillit avec l'horloge
+    const AUTO_MS = 12 * 3600000;   // un historique déjà chargé une fois se recharge seul au-delà de 12 h
     // Le polygone servi par Waze est PLUS LARGE que le tampon annoncé par editableMiles.
     // Mesuré le 29/08/2026 sur une zone de 204 km² ouverte par un trajet connu : 25 % de ses
     // points sont à plus de 6,437 km de toute trace, jusqu'à 11,4 km. On élargit donc la
@@ -173,7 +174,7 @@
             tipRule: n => 'Durée retenue : ' + n + ' jours après le trajet (règle du Wazeopedia), qui ajoute « ou le dernier jour du mois, selon ce qui est le plus tardif » : si cet arrondi existe, la date réelle est postérieure à celle annoncée. Le calcul porte sur le CENTRE de la vue.',
             tipRetreat: d => 'Retrait estimé le ' + d + '.',
             tipPermHere: 'Ici votre accès ne dépend pas du roulage.',
-            tipMax: (max, age) => 'Vous êtes dans une zone parcourue, mais le trajet qui l\'a ouverte est plus ancien que l\'historique disponible (' + age + ' jours). Il reste au plus ' + max + ' jours. Ce trou se comble avec le temps.',
+            tipMax: (max, age) => 'Vous êtes dans une zone parcourue, mais le trajet qui l’a ouverte n’est pas dans l’historique connu (qui remonte à ' + age + ' jours) : il est plus ancien, ou pas encore chargé. Il reste au plus ' + max + ' jours.',
             pLoad: 'Charger l\'historique des trajets', pDisplay: 'Affichage',
             pLayer: 'Dessiner les trajets, colorés par échéance',
             layerName: 'Trajets (Driving Areas)',
@@ -187,7 +188,11 @@
             pCache: 'Historique en cache', pCacheNone: 'Aucun trajet en cache.',
             pCacheInfo: (n, a, b, age, v) => n + ' trajets, du ' + a + ' au ' + b + ' — soit ' + age + ' jours de couverture sur les ' + v + ' de validité.',
             pCacheEmpty: n => 'Dont ' + n + ' sans trace GPS (aucune route appariée par Waze) : ils n\'ouvrent aucun droit et ne comptent pas dans le calcul.',
-            pCacheCut: n => '⚠️ ' + n + ' trajet(s) n\'ont pas pu être conservés : la mémoire locale de waze.com est pleine (elle est partagée avec vos autres scripts). Les plus anciens ont été jetés. Ils reviendront au prochain chargement s\'ils sont encore dans l\'archive de Waze.',
+            pCacheAt: d => 'Dernier chargement : ' + d + '. L’historique se recharge de lui-même au-delà de 12 h.',
+            pRetention: n => 'Ces trajets (dates et traces) sont gardés dans ce navigateur, au plus ' + n + ' jours, pour votre seul compte.',
+            pCacheNotSaved: '⚠️ L’historique n’a pas pu être enregistré : la mémoire locale de waze.com est pleine. Il reste valable jusqu’à la fermeture de la page, et sera redemandé au prochain chargement.',
+            pClear: 'Effacer l’historique local', pClearConfirm: 'Cliquer à nouveau pour effacer', pCleared: 'Historique local effacé.',
+            pCacheCut: n => '⚠️ ' + n + ' trajet(s) n’ont pas pu être conservés : la mémoire locale de waze.com est pleine (elle est partagée avec vos autres scripts). Les plus anciens ont été jetés, et ils ne reviendront pas : l’archive de Waze ne remonte qu’environ 60 jours.',
             pLegend: 'Code couleur',
             lgUnit: ' j',
             lgExpired: 'droit expiré',
@@ -204,6 +209,7 @@
             gTrace: (a, b) => 'Traces GPS : ' + a + ' / ' + b + '…',
             gAdded: n => n + ' trajet(s) ajouté(s).', gNothing: 'Rien de nouveau.',
             gFail: m => 'Échec : ' + m,
+            gFailedTraces: n => n + ' trace(s) GPS illisible(s) : redemandée(s) au prochain chargement.',
             xTitle: 'Exporter ce trajet en GPX', xFail: m => 'Échec de l\'export : ' + m,
             xNoTrace: 'ce trajet n\'a aucune trace GPS',
         },
@@ -230,7 +236,7 @@
             tipRule: n => 'Assumed duration: ' + n + ' days after the drive (Wazeopedia rule), which adds "or the last day of the month, whichever is later": if that rounding applies, the real date is later than shown. The estimate applies to the map CENTRE.',
             tipRetreat: d => 'Estimated removal on ' + d + '.',
             tipPermHere: 'Here your access does not depend on driving.',
-            tipMax: (max, age) => 'You are inside a driven area, but the drive that opened it is older than the available history (' + age + ' days). At most ' + max + ' days remain. This gap closes over time.',
+            tipMax: (max, age) => 'You are inside a driven area, but the drive that opened it is not in the known history (which goes back ' + age + ' days): it is older, or not loaded yet. At most ' + max + ' days remain.',
             pLoad: 'Load drive history', pDisplay: 'Display',
             pLayer: 'Draw drives, coloured by expiry',
             layerName: 'Drives (Driving Areas)',
@@ -244,7 +250,11 @@
             pCache: 'Cached history', pCacheNone: 'No drives cached.',
             pCacheInfo: (n, a, b, age, v) => n + ' drives, from ' + a + ' to ' + b + ' — ' + age + ' days of coverage out of the ' + v + ' of validity.',
             pCacheEmpty: n => 'Including ' + n + ' with no GPS trace (no road matched by Waze): they grant no rights and are left out of the estimate.',
-            pCacheCut: n => '⚠️ ' + n + ' drive(s) could not be kept: the local storage of waze.com is full (it is shared with your other scripts). The oldest ones were dropped. They will come back on the next load if Waze still archives them.',
+            pCacheAt: d => 'Last loaded: ' + d + '. The history reloads by itself after 12 h.',
+            pRetention: n => 'These drives (dates and traces) are kept in this browser, for at most ' + n + ' days, for your account only.',
+            pCacheNotSaved: '⚠️ The history could not be saved: the local storage of waze.com is full. It stays valid until the page is closed, and will be fetched again on the next load.',
+            pClear: 'Clear local history', pClearConfirm: 'Click again to clear', pCleared: 'Local history cleared.',
+            pCacheCut: n => '⚠️ ' + n + ' drive(s) could not be kept: the local storage of waze.com is full (it is shared with your other scripts). The oldest ones were dropped, and they will not come back: the Waze archive only goes back about 60 days.',
             pLegend: 'Colour key',
             lgUnit: ' d',
             lgExpired: 'right expired',
@@ -261,6 +271,7 @@
             gTrace: (a, b) => 'GPS traces: ' + a + ' / ' + b + '…',
             gAdded: n => n + ' drive(s) added.', gNothing: 'Nothing new.',
             gFail: m => 'Failed: ' + m,
+            gFailedTraces: n => n + ' GPS trace(s) could not be read: they will be requested again next time.',
             xTitle: 'Export this drive as GPX', xFail: m => 'Export failed: ' + m,
             xNoTrace: 'this drive has no GPS trace',
         },
@@ -287,7 +298,7 @@
             tipRule: n => 'Angenommene Dauer: ' + n + ' Tage nach der Fahrt (Wazeopedia-Regel), ergänzt um „oder der letzte Tag des Monats, je nachdem, was später ist“: gilt diese Rundung, liegt das echte Datum später. Die Berechnung gilt für die KARTENMITTE.',
             tipRetreat: d => 'Voraussichtlicher Entzug am ' + d + '.',
             tipPermHere: 'Hier hängt Ihr Zugriff nicht vom Fahren ab.',
-            tipMax: (max, age) => 'Sie befinden sich in einem befahrenen Bereich, aber die Fahrt, die ihn geöffnet hat, ist älter als der verfügbare Verlauf (' + age + ' Tage). Es bleiben höchstens ' + max + ' Tage. Diese Lücke schließt sich mit der Zeit.',
+            tipMax: (max, age) => 'Sie befinden sich in einem befahrenen Bereich, doch die öffnende Fahrt ist nicht im bekannten Verlauf (der ' + age + ' Tage zurückreicht): sie ist älter oder noch nicht geladen. Es bleiben höchstens ' + max + ' Tage.',
             pLoad: 'Fahrtenverlauf laden', pDisplay: 'Anzeige',
             pLayer: 'Fahrten zeichnen, nach Ablauf eingefärbt',
             layerName: 'Fahrten (Driving Areas)',
@@ -301,7 +312,11 @@
             pCache: 'Zwischengespeicherter Verlauf', pCacheNone: 'Keine Fahrten gespeichert.',
             pCacheInfo: (n, a, b, age, v) => n + ' Fahrten, vom ' + a + ' bis ' + b + ' — also ' + age + ' Tage Abdeckung von den ' + v + ' Tagen Gültigkeit.',
             pCacheEmpty: n => 'Davon ' + n + ' ohne GPS-Spur (keine Straße von Waze zugeordnet): sie gewähren keine Rechte und zählen nicht.',
-            pCacheCut: n => '⚠️ ' + n + ' Fahrt(en) konnten nicht gespeichert werden: der lokale Speicher von waze.com ist voll (er wird mit Ihren anderen Skripten geteilt). Die ältesten wurden verworfen. Sie kehren beim nächsten Laden zurück, sofern Waze sie noch archiviert.',
+            pCacheAt: d => 'Zuletzt geladen: ' + d + '. Der Verlauf lädt sich nach 12 Std. selbst neu.',
+            pRetention: n => 'Diese Fahrten (Daten und Spuren) bleiben in diesem Browser, höchstens ' + n + ' Tage, nur für Ihr Konto.',
+            pCacheNotSaved: '⚠️ Der Verlauf konnte nicht gespeichert werden: der lokale Speicher von waze.com ist voll. Er gilt bis zum Schließen der Seite und wird beim nächsten Laden erneut abgerufen.',
+            pClear: 'Lokalen Verlauf löschen', pClearConfirm: 'Zum Löschen erneut klicken', pCleared: 'Lokaler Verlauf gelöscht.',
+            pCacheCut: n => '⚠️ ' + n + ' Fahrt(en) konnten nicht behalten werden: der lokale Speicher von waze.com ist voll (er wird mit Ihren anderen Skripten geteilt). Die ältesten wurden verworfen und kommen nicht zurück: das Archiv von Waze reicht nur etwa 60 Tage zurück.',
             pLegend: 'Farbcode',
             lgUnit: ' T',
             lgExpired: 'Recht abgelaufen',
@@ -318,6 +333,7 @@
             gTrace: (a, b) => 'GPS-Spuren: ' + a + ' / ' + b + '…',
             gAdded: n => n + ' Fahrt(en) hinzugefügt.', gNothing: 'Nichts Neues.',
             gFail: m => 'Fehlgeschlagen: ' + m,
+            gFailedTraces: n => n + ' GPS-Spur(en) nicht lesbar: sie werden beim nächsten Laden erneut angefordert.',
             xTitle: 'Diese Fahrt als GPX exportieren', xFail: m => 'Export fehlgeschlagen: ' + m,
             xNoTrace: 'diese Fahrt hat keine GPS-Spur',
         },
@@ -344,7 +360,7 @@
             tipRule: n => 'Duración asumida: ' + n + ' días tras el viaje (regla del Wazeopedia), que añade «o el último día del mes, lo que sea más tarde»: si ese redondeo existe, la fecha real es posterior a la mostrada. El cálculo se refiere al CENTRO del mapa.',
             tipRetreat: d => 'Retirada estimada el ' + d + '.',
             tipPermHere: 'Aquí su acceso no depende de la conducción.',
-            tipMax: (max, age) => 'Está dentro de un área conducida, pero el viaje que la abrió es más antiguo que el historial disponible (' + age + ' días). Quedan como máximo ' + max + ' días. Esta laguna se cierra con el tiempo.',
+            tipMax: (max, age) => 'Está dentro de un área conducida, pero el viaje que la abrió no está en el historial conocido (que abarca ' + age + ' días): es más antiguo, o aún no se ha cargado. Quedan como mucho ' + max + ' días.',
             pLoad: 'Cargar el historial de viajes', pDisplay: 'Visualización',
             pLayer: 'Dibujar los viajes, coloreados por vencimiento',
             layerName: 'Viajes (Driving Areas)',
@@ -358,7 +374,11 @@
             pCache: 'Historial en caché', pCacheNone: 'Ningún viaje en caché.',
             pCacheInfo: (n, a, b, age, v) => n + ' viajes, del ' + a + ' al ' + b + ' — es decir ' + age + ' días de cobertura sobre los ' + v + ' de validez.',
             pCacheEmpty: n => 'De los cuales ' + n + ' sin traza GPS (ninguna vía emparejada por Waze): no otorgan permisos y no cuentan.',
-            pCacheCut: n => '⚠️ No se han podido conservar ' + n + ' trayecto(s): el almacenamiento local de waze.com está lleno (se comparte con sus otros scripts). Se han descartado los más antiguos. Volverán en la próxima carga si Waze todavía los archiva.',
+            pCacheAt: d => 'Última carga: ' + d + '. El historial se recarga solo pasadas 12 h.',
+            pRetention: n => 'Estos viajes (fechas y trazas) se guardan en este navegador, como mucho ' + n + ' días, solo para su cuenta.',
+            pCacheNotSaved: '⚠️ No se ha podido guardar el historial: el almacenamiento local de waze.com está lleno. Sigue válido hasta cerrar la página y se volverá a pedir en la próxima carga.',
+            pClear: 'Borrar el historial local', pClearConfirm: 'Pulse de nuevo para borrar', pCleared: 'Historial local borrado.',
+            pCacheCut: n => '⚠️ ' + n + ' viaje(s) no se han podido conservar: el almacenamiento local de waze.com está lleno (se comparte con sus otros scripts). Se descartaron los más antiguos, y no volverán: el archivo de Waze solo abarca unos 60 días.',
             pLegend: 'Código de colores',
             lgUnit: ' d',
             lgExpired: 'permiso caducado',
@@ -375,6 +395,7 @@
             gTrace: (a, b) => 'Trazas GPS: ' + a + ' / ' + b + '…',
             gAdded: n => n + ' viaje(s) añadido(s).', gNothing: 'Nada nuevo.',
             gFail: m => 'Error: ' + m,
+            gFailedTraces: n => n + ' traza(s) GPS ilegible(s): se volverán a pedir en la próxima carga.',
             xTitle: 'Exportar este viaje en GPX', xFail: m => 'Error de exportación: ' + m,
             xNoTrace: 'este viaje no tiene traza GPS',
         },
@@ -401,7 +422,7 @@
             tipRule: n => 'Durata assunta: ' + n + ' giorni dopo il viaggio (regola del Wazeopedia), che aggiunge «o l\'ultimo giorno del mese, se posteriore»: se questo arrotondamento esiste, la data reale è successiva. Il calcolo riguarda il CENTRO della mappa.',
             tipRetreat: d => 'Rimozione stimata il ' + d + '.',
             tipPermHere: 'Qui il tuo accesso non dipende dalla guida.',
-            tipMax: (max, age) => 'Sei in un\'area percorsa, ma il viaggio che l\'ha aperta è più vecchio dello storico disponibile (' + age + ' giorni). Restano al massimo ' + max + ' giorni. Questa lacuna si colma col tempo.',
+            tipMax: (max, age) => 'Sei in un’area percorsa, ma il viaggio che l’ha aperta non è nello storico noto (che risale a ' + age + ' giorni): è più vecchio, o non ancora caricato. Restano al massimo ' + max + ' giorni.',
             pLoad: 'Carica lo storico dei viaggi', pDisplay: 'Visualizzazione',
             pLayer: 'Disegna i viaggi, colorati per scadenza',
             layerName: 'Viaggi (Driving Areas)',
@@ -415,7 +436,11 @@
             pCache: 'Storico in cache', pCacheNone: 'Nessun viaggio in cache.',
             pCacheInfo: (n, a, b, age, v) => n + ' viaggi, dal ' + a + ' al ' + b + ' — cioè ' + age + ' giorni di copertura sui ' + v + ' di validità.',
             pCacheEmpty: n => 'Di cui ' + n + ' senza traccia GPS (nessuna strada associata da Waze): non danno permessi e non contano.',
-            pCacheCut: n => '⚠️ Non è stato possibile conservare ' + n + ' viaggio(i): la memoria locale di waze.com è piena (è condivisa con gli altri script). I più vecchi sono stati scartati. Torneranno al prossimo caricamento se Waze li archivia ancora.',
+            pCacheAt: d => 'Ultimo caricamento: ' + d + '. Lo storico si ricarica da solo dopo 12 ore.',
+            pRetention: n => 'Questi viaggi (date e tracce) restano in questo browser, al massimo ' + n + ' giorni, solo per il tuo account.',
+            pCacheNotSaved: '⚠️ Non è stato possibile salvare lo storico: la memoria locale di waze.com è piena. Resta valido fino alla chiusura della pagina e sarà richiesto di nuovo al prossimo caricamento.',
+            pClear: 'Cancella lo storico locale', pClearConfirm: 'Clicca di nuovo per cancellare', pCleared: 'Storico locale cancellato.',
+            pCacheCut: n => '⚠️ ' + n + ' viaggio/i non hanno potuto essere conservati: la memoria locale di waze.com è piena (è condivisa con gli altri script). I più vecchi sono stati scartati e non torneranno: l’archivio di Waze risale solo a circa 60 giorni.',
             pLegend: 'Codice colori',
             lgUnit: ' g',
             lgExpired: 'permesso scaduto',
@@ -432,6 +457,7 @@
             gTrace: (a, b) => 'Tracce GPS: ' + a + ' / ' + b + '…',
             gAdded: n => n + ' viaggio/i aggiunto/i.', gNothing: 'Niente di nuovo.',
             gFail: m => 'Errore: ' + m,
+            gFailedTraces: n => n + ' traccia/e GPS illeggibile/i: sarà/saranno richiesta/e di nuovo al prossimo caricamento.',
             xTitle: 'Esporta questo viaggio in GPX', xFail: m => 'Esportazione fallita: ' + m,
             xNoTrace: 'questo viaggio non ha traccia GPS',
         },
@@ -458,7 +484,7 @@
             tipRule: n => 'Duração adotada: ' + n + ' dias após o trajeto (regra do Wazeopedia), que acrescenta «ou o último dia do mês, o que for mais tarde»: se esse arredondamento existir, a data real é posterior. O cálculo vale para o CENTRO do mapa.',
             tipRetreat: d => 'Remoção estimada em ' + d + '.',
             tipPermHere: 'Aqui seu acesso não depende de dirigir.',
-            tipMax: (max, age) => 'Você está numa área percorrida, mas o trajeto que a abriu é mais antigo que o histórico disponível (' + age + ' dias). Restam no máximo ' + max + ' dias. Essa lacuna se fecha com o tempo.',
+            tipMax: (max, age) => 'Você está numa área percorrida, mas o trajeto que a abriu não está no histórico conhecido (que cobre ' + age + ' dias): é mais antigo, ou ainda não foi carregado. Restam no máximo ' + max + ' dias.',
             pLoad: 'Carregar o histórico de trajetos', pDisplay: 'Exibição',
             pLayer: 'Desenhar os trajetos, coloridos por vencimento',
             layerName: 'Trajetos (Driving Areas)',
@@ -472,7 +498,11 @@
             pCache: 'Histórico em cache', pCacheNone: 'Nenhum trajeto em cache.',
             pCacheInfo: (n, a, b, age, v) => n + ' trajetos, de ' + a + ' a ' + b + ' — ou seja ' + age + ' dias de cobertura sobre os ' + v + ' de validade.',
             pCacheEmpty: n => 'Dos quais ' + n + ' sem traço GPS (nenhuma via associada pelo Waze): não concedem permissões e não contam.',
-            pCacheCut: n => '⚠️ Não foi possível guardar ' + n + ' trajeto(s): a memória local de waze.com está cheia (é partilhada com os seus outros scripts). Os mais antigos foram descartados. Voltarão no próximo carregamento se o Waze ainda os arquivar.',
+            pCacheAt: d => 'Último carregamento: ' + d + '. O histórico se recarrega sozinho após 12 h.',
+            pRetention: n => 'Esses trajetos (datas e traços) ficam neste navegador, no máximo ' + n + ' dias, apenas para a sua conta.',
+            pCacheNotSaved: '⚠️ Não foi possível salvar o histórico: o armazenamento local do waze.com está cheio. Ele vale até fechar a página e será pedido de novo no próximo carregamento.',
+            pClear: 'Apagar o histórico local', pClearConfirm: 'Clique de novo para apagar', pCleared: 'Histórico local apagado.',
+            pCacheCut: n => '⚠️ ' + n + ' trajeto(s) não puderam ser mantidos: o armazenamento local do waze.com está cheio (é compartilhado com seus outros scripts). Os mais antigos foram descartados e não voltarão: o arquivo do Waze só guarda cerca de 60 dias.',
             pLegend: 'Código de cores',
             lgUnit: ' d',
             lgExpired: 'permissão expirada',
@@ -489,6 +519,7 @@
             gTrace: (a, b) => 'Traços GPS: ' + a + ' / ' + b + '…',
             gAdded: n => n + ' trajeto(s) adicionado(s).', gNothing: 'Nada novo.',
             gFail: m => 'Falha: ' + m,
+            gFailedTraces: n => n + ' traço(s) GPS ilegível(is): será(ão) pedido(s) de novo no próximo carregamento.',
             xTitle: 'Exportar este trajeto em GPX', xFail: m => 'Falha na exportação: ' + m,
             xNoTrace: 'este trajeto não tem traço GPS',
         },
@@ -515,7 +546,7 @@
             tipRule: n => 'Duração adotada: ' + n + ' dias após o trajeto (regra do Wazeopedia), que acrescenta «ou o último dia do mês, o que for mais tarde»: se esse arredondamento existir, a data real é posterior. O cálculo vale para o CENTRO do mapa.',
             tipRetreat: d => 'Remoção estimada a ' + d + '.',
             tipPermHere: 'Aqui o seu acesso não depende de conduzir.',
-            tipMax: (max, age) => 'Está numa área percorrida, mas o trajeto que a abriu é mais antigo do que o histórico disponível (' + age + ' dias). Restam no máximo ' + max + ' dias. Esta lacuna fecha-se com o tempo.',
+            tipMax: (max, age) => 'Está numa área percorrida, mas o trajeto que a abriu não está no histórico conhecido (que cobre ' + age + ' dias): é mais antigo, ou ainda não foi carregado. Restam no máximo ' + max + ' dias.',
             pLoad: 'Carregar o histórico de trajetos', pDisplay: 'Visualização',
             pLayer: 'Desenhar os trajetos, coloridos por prazo',
             layerName: 'Trajetos (Driving Areas)',
@@ -529,7 +560,11 @@
             pCache: 'Histórico em cache', pCacheNone: 'Nenhum trajeto em cache.',
             pCacheInfo: (n, a, b, age, v) => n + ' trajetos, de ' + a + ' a ' + b + ' — ou seja ' + age + ' dias de cobertura sobre os ' + v + ' de validade.',
             pCacheEmpty: n => 'Dos quais ' + n + ' sem traço GPS (nenhuma via associada pelo Waze): não concedem permissões e não contam.',
-            pCacheCut: n => '⚠️ Não foi possível guardar ' + n + ' trajeto(s): a memória local de waze.com está cheia (é partilhada com os seus outros scripts). Os mais antigos foram descartados. Voltarão no próximo carregamento se o Waze ainda os arquivar.',
+            pCacheAt: d => 'Último carregamento: ' + d + '. O histórico recarrega-se sozinho após 12 h.',
+            pRetention: n => 'Estes trajetos (datas e traços) ficam neste navegador, no máximo ' + n + ' dias, apenas para a sua conta.',
+            pCacheNotSaved: '⚠️ Não foi possível guardar o histórico: o armazenamento local do waze.com está cheio. Vale até fechar a página e será pedido de novo no próximo carregamento.',
+            pClear: 'Apagar o histórico local', pClearConfirm: 'Clique novamente para apagar', pCleared: 'Histórico local apagado.',
+            pCacheCut: n => '⚠️ ' + n + ' trajeto(s) não puderam ser mantidos: o armazenamento local do waze.com está cheio (é partilhado com os seus outros scripts). Os mais antigos foram descartados e não voltarão: o arquivo do Waze só guarda cerca de 60 dias.',
             pLegend: 'Código de cores',
             lgUnit: ' d',
             lgExpired: 'permissão expirada',
@@ -546,6 +581,7 @@
             gTrace: (a, b) => 'Traços GPS: ' + a + ' / ' + b + '…',
             gAdded: n => n + ' trajeto(s) adicionado(s).', gNothing: 'Nada de novo.',
             gFail: m => 'Falha: ' + m,
+            gFailedTraces: n => n + ' traço(s) GPS ilegível(is): será(ão) pedido(s) de novo no próximo carregamento.',
             xTitle: 'Exportar este trajeto em GPX', xFail: m => 'Falha na exportação: ' + m,
             xNoTrace: 'este trajeto não tem traço GPS',
         },
@@ -572,7 +608,7 @@
             tipRule: n => 'משך שנלקח: ' + n + ' ימים לאחר הנסיעה (כלל ה-Wazeopedia), שמוסיף «או היום האחרון של החודש, המאוחר מביניהם»: אם עיגול זה קיים, התאריך האמיתי מאוחר יותר. החישוב מתייחס למרכז המפה.',
             tipRetreat: d => 'הסרה משוערת בתאריך ' + d + '.',
             tipPermHere: 'כאן הגישה שלכם אינה תלויה בנסיעה.',
-            tipMax: (max, age) => 'אתם באזור שנסעתם בו, אך הנסיעה שפתחה אותו ישנה מההיסטוריה הזמינה (' + age + ' ימים). נותרו לכל היותר ' + max + ' ימים. הפער נסגר עם הזמן.',
+            tipMax: (max, age) => 'אתם באזור נסיעה, אך הנסיעה שפתחה אותו אינה בהיסטוריה המוכרת (שמגיעה ' + age + ' ימים אחורה): היא ישנה יותר, או שטרם נטענה. נותרו לכל היותר ' + max + ' ימים.',
             pLoad: 'טעינת היסטוריית הנסיעות', pDisplay: 'תצוגה',
             pLayer: 'ציור הנסיעות, צבועות לפי מועד הפקיעה',
             layerName: 'נסיעות (Driving Areas)',
@@ -586,7 +622,11 @@
             pCache: 'היסטוריה במטמון', pCacheNone: 'אין נסיעות במטמון.',
             pCacheInfo: (n, a, b, age, v) => n + ' נסיעות, מ-' + a + ' עד ' + b + ' — כלומר ' + age + ' ימי כיסוי מתוך ' + v + ' ימי התוקף.',
             pCacheEmpty: n => 'מתוכן ' + n + ' ללא מסלול GPS (Waze לא התאים אף כביש): הן אינן מעניקות הרשאות ואינן נספרות.',
-            pCacheCut: n => '⚠️ לא ניתן היה לשמור ' + n + ' נסיעות: האחסון המקומי של waze.com מלא (הוא משותף עם שאר הסקריפטים שלך). הישנות ביותר הושלכו. הן יחזרו בטעינה הבאה אם Waze עדיין שומר אותן בארכיון.',
+            pCacheAt: d => 'טעינה אחרונה: ' + d + '. ההיסטוריה נטענת מחדש מעצמה אחרי 12 שעות.',
+            pRetention: n => 'נסיעות אלה (תאריכים ומסלולים) נשמרות בדפדפן זה, לכל היותר ' + n + ' ימים, לחשבונך בלבד.',
+            pCacheNotSaved: '⚠️ לא ניתן היה לשמור את ההיסטוריה: האחסון המקומי של waze.com מלא. היא תקפה עד לסגירת הדף ותתבקש שוב בטעינה הבאה.',
+            pClear: 'מחיקת ההיסטוריה המקומית', pClearConfirm: 'לחצו שוב כדי למחוק', pCleared: 'ההיסטוריה המקומית נמחקה.',
+            pCacheCut: n => '⚠️ ' + n + ' נסיעות לא נשמרו: האחסון המקומי של waze.com מלא (הוא משותף עם הסקריפטים האחרים שלך). הישנות ביותר נמחקו והן לא יחזרו: הארכיון של Waze שומר רק כ-60 יום.',
             pLegend: 'מקרא צבעים',
             lgUnit: ' ימים',
             lgExpired: 'ההרשאה פגה',
@@ -603,6 +643,7 @@
             gTrace: (a, b) => 'מסלולי GPS: ' + a + ' / ' + b + '…',
             gAdded: n => n + ' נסיעות נוספו.', gNothing: 'אין חדש.',
             gFail: m => 'נכשל: ' + m,
+            gFailedTraces: n => n + ' מסלולי GPS לא נקראו: הם יתבקשו שוב בטעינה הבאה.',
             xTitle: 'ייצוא נסיעה זו כ-GPX', xFail: m => 'הייצוא נכשל: ' + m,
             xNoTrace: 'לנסיעה זו אין מסלול GPS',
         }
@@ -701,6 +742,11 @@
 
     async function traceDe(id) {
         const j = await getJSON(api('Archive/SessionGPS') + '?id=' + encodeURIComponent(id));
+        // Une réponse d'une autre FORME n'est pas une trace vide : mémorisée comme telle, elle
+        // restait « sans trace » pendant 130 jours. On lève, et le trajet sera redemandé.
+        if (!j || (j.archiveSessions !== undefined && !Array.isArray(j.archiveSessions.objects))) {
+            throw new Error('réponse SessionGPS inattendue');
+        }
         const sessions = (j.archiveSessions && j.archiveSessions.objects) || [];
         const pts = [];
         let dernier = null, proj = null;
@@ -738,20 +784,40 @@
     //  Cache local
     // =====================================================================
 
+    // Le compte connecté. ⚠️ Le cache lui appartient : la 0.06.00 le rangeait sous une clé fixe, et
+    // un second compte ouvert dans le même navigateur héritait des trajets du premier — des « ~85 j »
+    // qui n'étaient pas les siens, et ses traces sur le calque (audit du 25/09/2026). L'identifiant
+    // est `W.loginManager.user.attributes.id`, un nombre (relevé dans WME le 25/09/2026).
+    function proprietaire() {
+        const id = window.W?.loginManager?.user?.attributes?.id;
+        return (id === undefined || id === null) ? null : id;
+    }
+
     function lireCache() {
+        const moi = proprietaire();
         for (const k of [LS_KEY, LS_KEY_OLD]) {
             try {
                 const c = JSON.parse(localStorage.getItem(k) || 'null');
                 if (c && Array.isArray(c.drives)) {
-                    // Repris de l'ancien nom : on le réécrit tout de suite sous la nouvelle clé,
-                    // sinon l'historique ne migre qu'au prochain chargement manuel et un
-                    // utilisateur qui n'y touche pas garde deux copies divergentes.
-                    if (k === LS_KEY_OLD) { try { localStorage.setItem(LS_KEY, JSON.stringify(c)); } catch (e) { } }
+                    if (c.owner != null && moi != null && c.owner !== moi) {
+                        log('cache d\'un autre compte : ignoré');
+                        return { at: 0, drives: [], owner: moi };
+                    }
+                    // Un cache d'avant la 0.07.00 n'a pas de propriétaire : il est au compte courant.
+                    if (c.owner == null) c.owner = moi;
+                    // Purge AUSSI à la lecture : faite seulement à l'écriture, elle laissait un
+                    // cache jamais rechargé garder ses trajets sans limite.
+                    const limite = Date.now() - PURGE_DAYS * D_MS;
+                    c.drives = c.drives.filter(d => d.t >= limite);
+                    // Repris de l'ancien nom (WME Area Countdown) : réécrit sous la nouvelle clé, et
+                    // l'ancienne retirée — elle restait sinon, copie morte, dans le quota partagé.
+                    if (k === LS_KEY_OLD) { if (ecrireCache(c)) { try { localStorage.removeItem(LS_KEY_OLD); } catch (e) { } } }
+                    else { try { localStorage.removeItem(LS_KEY_OLD); } catch (e) { } }
                     return c;
                 }
             } catch (e) { log('cache illisible (' + k + ') : ' + e.message); }
         }
-        return { at: 0, drives: [] };
+        return { at: 0, drives: [], owner: moi };
     }
 
     // Waze descend ses coordonnées en flottants pleine précision : une quinzaine de caractères
@@ -768,6 +834,7 @@
             for (let i = 0; i < d.pts.length; i++) d.pts[i] = arrondi5(d.pts[i]);
         }
         c.tronque = 0;
+        c.echecEcriture = false;
         try { localStorage.setItem(LS_KEY, JSON.stringify(c)); return true; }
         catch (e) {
             // Cette perte ne se voyait QUE dans la console : l'historique se vidait par le bas
@@ -778,7 +845,15 @@
             c.tronque = Math.max(0, c.drives.length - 180);
             c.drives = c.drives.slice(0, 180);
             try { localStorage.setItem(LS_KEY, JSON.stringify(c)); return true; }
-            catch (e2) { log('échec d\'écriture du cache : ' + e2.message); return false; }
+            catch (e2) {
+                // Rien n'est passé : ce n'est pas une troncature, c'est un historique NON
+                // ENREGISTRÉ. Il vit en mémoire jusqu'à la fermeture de la page, et sera
+                // redemandé au prochain chargement. Le panneau le dit comme tel.
+                log('échec d\'écriture du cache : ' + e2.message);
+                c.tronque = 0;
+                c.echecEcriture = true;
+                return false;
+            }
         }
     }
 
@@ -786,7 +861,13 @@
         for (const k of [LS_OPT, LS_OPT_OLD]) {
             try {
                 const o = JSON.parse(localStorage.getItem(k) || 'null');
-                if (o) return Object.assign({}, opts, o);
+                if (o) {
+                    const r = Object.assign({}, opts, o);
+                    // Reprises de l'ancien nom : réécrites sous la nouvelle clé, l'ancienne retirée.
+                    if (k === LS_OPT_OLD) { try { localStorage.setItem(LS_OPT, JSON.stringify(r)); } catch (e) { } }
+                    try { localStorage.removeItem(LS_OPT_OLD); } catch (e) { }
+                    return r;
+                }
             } catch (e) { }
         }
         return opts;
@@ -801,7 +882,12 @@
         if (chargement) return chargement;
         chargement = (async () => {
             const connus = new Set(cache.drives.map(d => d.id));
-            const aFaire = [];
+            // Les traces qui ont échoué la dernière fois sont redemandées D'ABORD : la liste
+            // s'arrête après deux pages déjà connues, et un trajet en échec au-delà de l'offset
+            // 100 n'était jamais repris (audit du 25/09/2026).
+            const aFaire = (cache.aReprendre || []).filter(a => !connus.has(a.id));
+            aFaire.forEach(a => connus.add(a.id));
+            cache.aReprendre = [];
             let offset = 0, pagesVides = 0;
             while (true) {
                 const page = await pageArchive(offset);
@@ -815,28 +901,40 @@
                 onProgress && onProgress(t('gList', aFaire.length));
             }
 
-            let faits = 0;
+            let faits = 0, ajoutes = 0;
+            const echecs = [];
             const file = aFaire.slice();
             const ouvriers = new Array(Math.min(CONCURRENCE, file.length)).fill(0).map(async () => {
                 while (file.length) {
                     const a = file.shift();
                     try {
-                        const pts = await traceDe(a.id);
+                        let pts;
+                        try { pts = await traceDe(a.id); }
+                        catch (e) { if (a.totalRoadMeters === 0) pts = []; else throw e; }
                         // Un trajet SANS trace (totalRoadMeters à 0, aucune route appariée) n'ouvre
                         // aucun droit — mais il est mémorisé quand même, sinon chaque rafraîchissement
-                        // le redemanderait et l'incrémental n'en serait plus un.
+                        // le redemanderait et l'incrémental n'en serait plus un. Un trajet qui a
+                        // roulé des routes et revient sans trace, lui, est un ÉCHEC : on le reprendra.
+                        if (!pts.length && a.totalRoadMeters > 0) throw new Error('trace vide pour ' + a.totalRoadMeters + ' m roulés');
                         cache.drives.push({ id: a.id, t: a.startTime, bb: pts.length ? bboxDe(pts) : null, pts });
-                    } catch (e) { log('trace ' + a.id.slice(0, 8) + ' : ' + e.message); }
+                        ajoutes++;
+                    } catch (e) {
+                        log('trace ' + a.id.slice(0, 8) + ' : ' + e.message);
+                        echecs.push({ id: a.id, startTime: a.startTime, totalRoadMeters: a.totalRoadMeters });
+                    }
                     faits++;
                     if (faits % 10 === 0) onProgress && onProgress(t('gTrace', faits, aFaire.length));
                 }
             });
             await Promise.all(ouvriers);
 
+            // Gardés pour le prochain chargement, sauf s'ils sont trop vieux pour compter encore.
+            const limite = Date.now() - PURGE_DAYS * D_MS;
+            cache.aReprendre = echecs.filter(a => a.startTime >= limite);
             cache.at = Date.now();
             ecrireCache(cache);
             onProgress && onProgress('');
-            return aFaire.length;
+            return { ajoutes, echecs: echecs.length };
         })().finally(() => { chargement = null; });
         return chargement;
     }
@@ -1442,6 +1540,7 @@
 .wda-pane .wda-btn{display:inline-block;padding:5px 12px;border-radius:6px;border:1px solid #1565c0;
   background:#1565c0;color:#fff;cursor:pointer;font-size:12px}
 .wda-pane .wda-btn[disabled]{opacity:.5;cursor:default}
+.wda-pane .wda-btn-sec{background:#fff;color:#1565c0;margin-top:6px}
 .wda-pane .wda-etat{margin:8px 0;padding:6px 8px;background:#f2f4f7;border-radius:6px;color:#333}
 .wda-pane .wda-note{color:#666;font-size:12px}
 .wda-pane .wda-alerte{color:#c62828;font-size:12px}
@@ -1515,6 +1614,7 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
   <div class="wda-note">${t('pWhatText', km, VALID_DAYS)}</div>
   <h4>${t('pCache')}</h4>
   <div class="wda-note" id="wda-cache">…</div>
+  <button class="wda-btn wda-btn-sec" id="wda-effacer">${t('pClear')}</button>
   <h4>${t('pGpx')}</h4>
   <div class="wda-note">${t('pGpxText')}</div>
   <div class="wda-alerte" id="wda-gpx-etat"></div>
@@ -1538,8 +1638,11 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
                 }
                 c.innerHTML = t('pCacheInfo', cache.drives.length, new Date(vieux).toLocaleDateString(),
                     new Date(recent).toLocaleDateString(), ageArchiveJours(), VALID_DAYS)
+                    + (cache.at ? '<br>' + t('pCacheAt', new Date(cache.at).toLocaleString()) : '')
                     + (vides ? '<br>' + t('pCacheEmpty', vides) : '')
-                    + (cache.tronque ? '<br><span class="wda-alerte">' + t('pCacheCut', cache.tronque) + '</span>' : '');
+                    + '<br>' + t('pRetention', PURGE_DAYS)
+                    + (cache.tronque ? '<br><span class="wda-alerte">' + t('pCacheCut', cache.tronque) + '</span>' : '')
+                    + (cache.echecEcriture ? '<br><span class="wda-alerte">' + t('pCacheNotSaved') + '</span>' : '');
             }
         }
         const sc = $('wda-sc');
@@ -1560,20 +1663,59 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
         }
     }
 
+    // Un chargement de l'historique, depuis le bouton ou tout seul (voir chargerSiVieux) : même
+    // suite dans les deux cas, pour que le badge et les pastilles suivent.
+    async function charger(onProgress, prog) {
+        try {
+            const r = await chargerHistorique(onProgress);
+            if (prog) prog.textContent = (r.ajoutes ? t('gAdded', r.ajoutes) : t('gNothing'))
+                + (r.echecs ? ' ' + t('gFailedTraces', r.echecs) : '');
+            rafraichirEcheances();
+            recalculer();
+        } catch (e) {
+            if (prog) prog.textContent = t('gFail', e.message);
+            log('chargement : ' + e.message);
+        } finally { majPanneau(); }
+    }
+
+    // ⚠️ La 0.06.00 ne rechargeait JAMAIS l'historique d'elle-même : on roulait pour renouveler une
+    // zone, on rouvrait WME, et le badge gardait l'ancien décompte. Sans un clic tous les ~60 jours,
+    // des trajets sortaient de l'archive de Waze avant d'avoir été gardés : perdus pour de bon.
+    // Seulement pour qui a DÉJÀ chargé une fois : le premier chargement (des centaines de traces)
+    // reste un geste de l'éditeur.
+    function chargerSiVieux() {
+        if (!cache.at || chargement || Date.now() - cache.at < AUTO_MS) return;
+        const prog = paneEl && paneEl.querySelector('#wda-prog');
+        charger(m => { if (prog) prog.textContent = m; }, prog);
+    }
+
     function connectPane() {
         const $ = id => paneEl.querySelector('#' + id);
         const btn = $('wda-load'), prog = $('wda-prog');
         btn.addEventListener('click', async () => {
             btn.disabled = true;
-            try {
-                const n = await chargerHistorique(m => { prog.textContent = m; });
-                prog.textContent = n ? t('gAdded', n) : t('gNothing');
-                rafraichirEcheances();
-                recalculer();
-            } catch (e) {
-                prog.textContent = t('gFail', e.message);
-                log('chargement : ' + e.message);
-            } finally { btn.disabled = false; majPanneau(); }
+            try { await charger(m => { prog.textContent = m; }, prog); }
+            finally { btn.disabled = false; }
+        });
+        // Effacer l'historique local : les trajets datés et leurs traces restent sinon dans ce
+        // navigateur jusqu'à PURGE_DAYS jours. Deux clics, sans boîte de dialogue : le premier
+        // arme le bouton, le second efface ; laissé seul, il se désarme.
+        const ef = $('wda-effacer');
+        let arme = 0;
+        ef.addEventListener('click', () => {
+            if (!arme) {
+                ef.textContent = t('pClearConfirm');
+                arme = setTimeout(() => { arme = 0; ef.textContent = t('pClear'); }, 5000);
+                return;
+            }
+            clearTimeout(arme); arme = 0;
+            try { localStorage.removeItem(LS_KEY); } catch (e) { }
+            cache = { at: 0, drives: [], owner: proprietaire() };
+            effacerCalque();
+            rafraichirEcheances();
+            ef.textContent = t('pClear');
+            prog.textContent = t('pCleared');
+            recalculer(true);
         });
         const cq = $('wda-calque'); cq.checked = opts.calque;
         cq.addEventListener('change', () => basculerCalque(cq.checked));
@@ -1640,6 +1782,7 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
 
         recalculer(true);
         if (opts.calque && cache.drives.length) dessinerCalque();
+        chargerSiVieux();
 
         // Le panneau « Vos trajets » se construit et se repagine sans qu'aucun événement du SDK
         // ne le signale. Un sondage d'une seconde coûte une querySelector et suffit ; il sort
@@ -1649,7 +1792,7 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
         // Le décompte vieillit tout seul : sans ce rafraîchissement, une pastille posée gardait sa
         // valeur tant que la page restait ouverte, et un droit expiré pouvait encore afficher J-1
         // (audit du 25/09/2026). Au retour sur l'onglet aussi : un onglet caché ne tourne presque plus.
-        const rafraichir = () => { rafraichirEcheances(); recalculer(true); };
+        const rafraichir = () => { rafraichirEcheances(); recalculer(true); chargerSiVieux(); };
         setInterval(rafraichir, RAFRAICHIR_MS);
         document.addEventListener('visibilitychange', () => { if (!document.hidden) rafraichir(); });
 
