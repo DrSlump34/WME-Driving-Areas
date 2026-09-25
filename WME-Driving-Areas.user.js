@@ -81,11 +81,14 @@
     const gmScript = () => (typeof GM_info !== 'undefined' && GM_info.script) || {};
     const URL_MAJ = gmScript().updateURL || 'https://update.greasyfork.org/scripts/593493/WME%20Driving%20Areas.meta.js';
     const URL_INSTALLER = gmScript().downloadURL || 'https://update.greasyfork.org/scripts/593493/WME%20Driving%20Areas.user.js';
-    // L'icône du script (celle de @icon), la même dans l'onglet Scripts et en tête du panneau.
-    const ICONE = '<svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="12" fill="#1565c0"/>'
-        + '<rect x="15" y="8" width="34" height="6" rx="3" fill="#fff"/><rect x="15" y="50" width="34" height="6" rx="3" fill="#fff"/>'
-        + '<path d="M19 14 L45 14 L34 32 L45 50 L19 50 L30 32 Z" fill="#fff"/><path d="M23 18 L41 18 L32 32 Z" fill="#fb8c00"/>'
-        + '<path d="M32 40 L41 46 L23 46 Z" fill="#fb8c00"/><rect x="31" y="30" width="2" height="12" fill="#fb8c00"/></svg>';
+    // L'icône du script dans l'onglet Scripts et en tête du panneau : le sablier SANS fond, comme les
+    // autres scripts (WCT et WJN mettent un emoji seul, WRP un dessin sans fond) — le carré bleu de
+    // @icon reste pour la liste de Tampermonkey. Demande de l'auteur, 25/09/2026.
+    const ICONE = '<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="12" y="4" width="40" height="8" rx="4" fill="#1565c0"/>'
+        + '<rect x="12" y="52" width="40" height="8" rx="4" fill="#1565c0"/>'
+        + '<path d="M17 12 L47 12 L35 32 L47 52 L17 52 L29 32 Z" fill="#fff" stroke="#1565c0" stroke-width="5" stroke-linejoin="round"/>'
+        + '<path d="M23 17 L41 17 L32 30 Z" fill="#fb8c00"/><path d="M32 40 L42 48 L22 48 Z" fill="#fb8c00"/>'
+        + '<rect x="30.5" y="29" width="3" height="13" fill="#fb8c00"/></svg>';
     const icone = px => ICONE.replace('<svg ', '<svg width="' + px + '" height="' + px + '" ');
 
     // ---------- Réglages ----------
