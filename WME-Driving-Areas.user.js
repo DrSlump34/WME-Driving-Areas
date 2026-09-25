@@ -78,6 +78,12 @@
     // points sont à plus de 6,437 km de toute trace, jusqu'à 11,4 km. On élargit donc la
     // recherche quand le rayon nominal ne trouve rien — en le DISANT.
     const ELARGI = 2.5;
+    // Profondeur de l'archive des trajets (Archive/List), mesurée sur deux comptes : 63 jours le
+    // 29/08/2026, 59 le 08/09/2026. Un trajet qui a ouvert une zone et que le cache ne connaît pas
+    // est donc plus vieux que ça : la borne « ≤ N j » se calcule sur au moins cette profondeur, même
+    // si le cache est plus jeune (sinon « ≤ 70 j » s'affichait là où « ≤ 31 j » était démontrable).
+    // Si l'archive d'un compte était plus courte, la borne ne ferait que devenir plus prudente.
+    const ARCHIVE_MIN_J = 59;
     // Le code couleur, en jours RESTANTS, et il n'existe qu'ici : couleurClasse() l'applique aux
     // pastilles, couleurTrace() au calque, et la légende du panneau l'affiche. OliveStChi avait
     // deviné « rouge = moins de 2 jours » là où le code disait 14 : sans légende, on devine, et
@@ -163,6 +169,7 @@
             bOutsideTip: km => 'Aucun trajet connu à moins de ' + km + ' km du centre de la vue.',
             tipLast: (d, n, km) => 'Dernier passage connu : le ' + d + ' (il y a ' + n + ' j, à ' + km + ' km).',
             tipWide: km => '⚠️ Ce trajet est au-delà du rayon annoncé par WME (' + km + ' km) : il est retenu parce que le polygone de Waze vous place bien dans une zone parcourue, mais rien ne prouve que ce soit lui qui l\'ait ouverte. Celui qui l’a ouverte peut être plus ancien : la date affichée est un maximum.',
+            tipRadiusGuess: m => '⚠️ WME n’a pas donné le rayon de vos droits : ' + m + ' mi supposés. Si le vôtre est plus petit, il vous reste moins de temps qu’affiché.',
             tipRule: n => 'Durée retenue : ' + n + ' jours après le trajet (règle du Wazeopedia), qui ajoute « ou le dernier jour du mois, selon ce qui est le plus tardif » : si cet arrondi existe, la date réelle est postérieure à celle annoncée. Le calcul porte sur le CENTRE de la vue.',
             tipRetreat: d => 'Retrait estimé le ' + d + '.',
             tipPermHere: 'Ici votre accès ne dépend pas du roulage.',
@@ -175,6 +182,7 @@
             pShortcutKO: 'Raccourci clavier indisponible (touches déjà prises). La case reste accessible ici et dans le menu Calques.',
             pAsEditor: 'Ignorer mes zones gérées (voir ce que verrait un éditeur sans droits)',
             pWhat: 'Ce que dit le badge',
+            pRadiusGuess: 'supposé',
             pWhatText: (km, d) => 'Le décompte part du <b>dernier passage</b> à moins de ' + km + ' du centre de la vue, plus ' + d + ' jours. Cette durée vient du Wazeopedia, qui ajoute « ou le dernier jour du mois, selon ce qui est le plus tardif » : <b>~N j</b> ne surestime donc jamais votre temps restant.<br><br>Ce qui est <b>hachuré</b> est une borne haute (<b>≤ N j</b>) : le trajet qui a ouvert la zone est plus ancien que l’historique disponible, ou n’a été trouvé qu’au-delà du rayon annoncé par WME, ou ce rayon a dû être supposé. La date exacte est inconnue, mais elle n’est pas plus tardive que celle affichée.',
             pCache: 'Historique en cache', pCacheNone: 'Aucun trajet en cache.',
             pCacheInfo: (n, a, b, age, v) => n + ' trajets, du ' + a + ' au ' + b + ' — soit ' + age + ' jours de couverture sur les ' + v + ' de validité.',
@@ -218,6 +226,7 @@
             bOutsideTip: km => 'No known drive within ' + km + ' km of the map centre.',
             tipLast: (d, n, km) => 'Last known drive: ' + d + ' (' + n + ' d ago, ' + km + ' km away).',
             tipWide: km => '⚠️ This drive is beyond the radius WME reports (' + km + ' km). It is used because Waze\'s own polygon does place you inside a driven area, but nothing proves this drive is the one that opened it. The drive that did may be older: the date shown is a maximum.',
+            tipRadiusGuess: m => '⚠️ WME did not provide the radius of your rights: ' + m + ' mi assumed. If yours is smaller, you have less time left than shown.',
             tipRule: n => 'Assumed duration: ' + n + ' days after the drive (Wazeopedia rule), which adds "or the last day of the month, whichever is later": if that rounding applies, the real date is later than shown. The estimate applies to the map CENTRE.',
             tipRetreat: d => 'Estimated removal on ' + d + '.',
             tipPermHere: 'Here your access does not depend on driving.',
@@ -230,6 +239,7 @@
             pShortcutKO: 'Keyboard shortcut unavailable (keys already taken). The checkbox is still here and in the Layers menu.',
             pAsEditor: 'Ignore my managed areas (see what an editor without rights would see)',
             pWhat: 'What the badge means',
+            pRadiusGuess: 'assumed',
             pWhatText: (km, d) => 'The countdown starts from the <b>last drive</b> within ' + km + ' of the map centre, plus ' + d + ' days. That duration comes from Wazeopedia, which adds "or the last day of the month, whichever is later": <b>~N d</b> therefore never overstates your remaining time.<br><br>Anything <b>hatched</b> is an upper bound (<b>≤ N d</b>): the drive that opened the area is older than the available history, or was only found beyond the radius WME reports, or that radius had to be assumed. The exact date is unknown, but it is no later than the one shown.',
             pCache: 'Cached history', pCacheNone: 'No drives cached.',
             pCacheInfo: (n, a, b, age, v) => n + ' drives, from ' + a + ' to ' + b + ' — ' + age + ' days of coverage out of the ' + v + ' of validity.',
@@ -273,6 +283,7 @@
             bOutsideTip: km => 'Keine bekannte Fahrt innerhalb von ' + km + ' km um die Kartenmitte.',
             tipLast: (d, n, km) => 'Letzte bekannte Fahrt: ' + d + ' (vor ' + n + ' T, ' + km + ' km entfernt).',
             tipWide: km => '⚠️ Diese Fahrt liegt außerhalb des von WME genannten Radius (' + km + ' km). Sie wird verwendet, weil das Polygon von Waze Sie tatsächlich in einem befahrenen Bereich verortet — dass gerade diese Fahrt ihn geöffnet hat, ist aber nicht belegt. Die öffnende Fahrt kann älter sein: das angezeigte Datum ist ein Höchstwert.',
+            tipRadiusGuess: m => '⚠️ WME hat den Radius Ihrer Rechte nicht geliefert: ' + m + ' mi angenommen. Ist Ihrer kleiner, bleibt Ihnen weniger Zeit als angezeigt.',
             tipRule: n => 'Angenommene Dauer: ' + n + ' Tage nach der Fahrt (Wazeopedia-Regel), ergänzt um „oder der letzte Tag des Monats, je nachdem, was später ist“: gilt diese Rundung, liegt das echte Datum später. Die Berechnung gilt für die KARTENMITTE.',
             tipRetreat: d => 'Voraussichtlicher Entzug am ' + d + '.',
             tipPermHere: 'Hier hängt Ihr Zugriff nicht vom Fahren ab.',
@@ -285,6 +296,7 @@
             pShortcutKO: 'Tastenkürzel nicht verfügbar (Tasten bereits belegt). Das Kästchen bleibt hier und im Ebenen-Menü erreichbar.',
             pAsEditor: 'Meine verwalteten Bereiche ignorieren (Sicht eines Bearbeiters ohne Rechte)',
             pWhat: 'Was das Abzeichen bedeutet',
+            pRadiusGuess: 'angenommen',
             pWhatText: (km, d) => 'Die Frist beginnt mit der <b>letzten Fahrt</b> innerhalb von ' + km + ' um die Kartenmitte, plus ' + d + ' Tage. Diese Dauer stammt aus dem Wazeopedia, das „oder der letzte Tag des Monats, je nachdem, was später ist“ ergänzt: <b>~N T</b> überschätzt Ihre Restzeit also nie.<br><br><b>Schraffiertes</b> ist eine Obergrenze (<b>≤ N T</b>): die öffnende Fahrt ist älter als der verfügbare Verlauf, wurde nur außerhalb des von WME genannten Radius gefunden, oder dieser Radius musste angenommen werden. Das genaue Datum ist unbekannt, liegt aber nicht später als das angezeigte.',
             pCache: 'Zwischengespeicherter Verlauf', pCacheNone: 'Keine Fahrten gespeichert.',
             pCacheInfo: (n, a, b, age, v) => n + ' Fahrten, vom ' + a + ' bis ' + b + ' — also ' + age + ' Tage Abdeckung von den ' + v + ' Tagen Gültigkeit.',
@@ -328,6 +340,7 @@
             bOutsideTip: km => 'Ningún viaje conocido a menos de ' + km + ' km del centro del mapa.',
             tipLast: (d, n, km) => 'Último viaje conocido: el ' + d + ' (hace ' + n + ' d, a ' + km + ' km).',
             tipWide: km => '⚠️ Este viaje está más allá del radio que indica WME (' + km + ' km). Se usa porque el polígono de Waze sí lo sitúa dentro de un área conducida, pero nada prueba que fuera este viaje el que la abrió. El que la abrió puede ser más antiguo: la fecha mostrada es un máximo.',
+            tipRadiusGuess: m => '⚠️ WME no ha dado el radio de sus permisos: se suponen ' + m + ' mi. Si el suyo es menor, le queda menos tiempo del indicado.',
             tipRule: n => 'Duración asumida: ' + n + ' días tras el viaje (regla del Wazeopedia), que añade «o el último día del mes, lo que sea más tarde»: si ese redondeo existe, la fecha real es posterior a la mostrada. El cálculo se refiere al CENTRO del mapa.',
             tipRetreat: d => 'Retirada estimada el ' + d + '.',
             tipPermHere: 'Aquí su acceso no depende de la conducción.',
@@ -340,6 +353,7 @@
             pShortcutKO: 'Atajo de teclado no disponible (teclas ya ocupadas). La casilla sigue disponible aquí y en el menú Capas.',
             pAsEditor: 'Ignorar mis áreas gestionadas (ver lo que vería un editor sin permisos)',
             pWhat: 'Qué indica la etiqueta',
+            pRadiusGuess: 'supuesto',
             pWhatText: (km, d) => 'La cuenta atrás parte del <b>último viaje</b> a menos de ' + km + ' del centro del mapa, más ' + d + ' días. Esa duración viene del Wazeopedia, que añade «o el último día del mes, lo que sea más tarde»: <b>~N d</b> nunca sobrestima el tiempo restante.<br><br>Lo <b>rayado</b> es un límite superior (<b>≤ N d</b>): el viaje que abrió el área es anterior al historial disponible, o solo se encontró más allá del radio que indica WME, o ese radio tuvo que suponerse. La fecha exacta es desconocida, pero no es posterior a la mostrada.',
             pCache: 'Historial en caché', pCacheNone: 'Ningún viaje en caché.',
             pCacheInfo: (n, a, b, age, v) => n + ' viajes, del ' + a + ' al ' + b + ' — es decir ' + age + ' días de cobertura sobre los ' + v + ' de validez.',
@@ -383,6 +397,7 @@
             bOutsideTip: km => 'Nessun viaggio noto entro ' + km + ' km dal centro della mappa.',
             tipLast: (d, n, km) => 'Ultimo passaggio noto: il ' + d + ' (' + n + ' g fa, a ' + km + ' km).',
             tipWide: km => '⚠️ Questo viaggio è oltre il raggio indicato da WME (' + km + ' km). Viene usato perché il poligono di Waze ti colloca davvero in un\'area percorsa, ma nulla prova che sia stato questo viaggio ad aprirla. Quello che l’ha aperta può essere più vecchio: la data mostrata è un massimo.',
+            tipRadiusGuess: m => '⚠️ WME non ha fornito il raggio dei tuoi permessi: ' + m + ' mi ipotizzate. Se il tuo è più piccolo, ti resta meno tempo di quanto indicato.',
             tipRule: n => 'Durata assunta: ' + n + ' giorni dopo il viaggio (regola del Wazeopedia), che aggiunge «o l\'ultimo giorno del mese, se posteriore»: se questo arrotondamento esiste, la data reale è successiva. Il calcolo riguarda il CENTRO della mappa.',
             tipRetreat: d => 'Rimozione stimata il ' + d + '.',
             tipPermHere: 'Qui il tuo accesso non dipende dalla guida.',
@@ -395,6 +410,7 @@
             pShortcutKO: 'Scorciatoia non disponibile (tasti già occupati). La casella resta qui e nel menu Livelli.',
             pAsEditor: 'Ignora le mie aree gestite (vedi cosa vedrebbe un editor senza permessi)',
             pWhat: 'Cosa indica il distintivo',
+            pRadiusGuess: 'ipotizzato',
             pWhatText: (km, d) => 'Il conto alla rovescia parte dall’<b>ultimo passaggio</b> entro ' + km + ' dal centro della mappa, più ' + d + ' giorni. Questa durata viene dal Wazeopedia, che aggiunge «o l’ultimo giorno del mese, se posteriore»: <b>~N g</b> non sovrastima mai il tempo che ti resta.<br><br>Ciò che è <b>tratteggiato</b> è un limite superiore (<b>≤ N g</b>): il viaggio che ha aperto l’area è più vecchio dello storico disponibile, o è stato trovato solo oltre il raggio indicato da WME, o quel raggio è stato ipotizzato. La data esatta è sconosciuta, ma non è successiva a quella mostrata.',
             pCache: 'Storico in cache', pCacheNone: 'Nessun viaggio in cache.',
             pCacheInfo: (n, a, b, age, v) => n + ' viaggi, dal ' + a + ' al ' + b + ' — cioè ' + age + ' giorni di copertura sui ' + v + ' di validità.',
@@ -438,6 +454,7 @@
             bOutsideTip: km => 'Nenhum trajeto conhecido a menos de ' + km + ' km do centro do mapa.',
             tipLast: (d, n, km) => 'Última passagem conhecida: em ' + d + ' (há ' + n + ' d, a ' + km + ' km).',
             tipWide: km => '⚠️ Este trajeto está além do raio informado pelo WME (' + km + ' km). Ele é usado porque o polígono do Waze de fato coloca você numa área percorrida, mas nada prova que tenha sido ele a abri-la. O que a abriu pode ser mais antigo: a data mostrada é um máximo.',
+            tipRadiusGuess: m => '⚠️ O WME não informou o raio das suas permissões: ' + m + ' mi presumidas. Se o seu for menor, resta menos tempo do que o mostrado.',
             tipRule: n => 'Duração adotada: ' + n + ' dias após o trajeto (regra do Wazeopedia), que acrescenta «ou o último dia do mês, o que for mais tarde»: se esse arredondamento existir, a data real é posterior. O cálculo vale para o CENTRO do mapa.',
             tipRetreat: d => 'Remoção estimada em ' + d + '.',
             tipPermHere: 'Aqui seu acesso não depende de dirigir.',
@@ -450,6 +467,7 @@
             pShortcutKO: 'Atalho de teclado indisponível (teclas já ocupadas). A caixa continua aqui e no menu Camadas.',
             pAsEditor: 'Ignorar minhas áreas gerenciadas (ver o que veria um editor sem permissões)',
             pWhat: 'O que o distintivo indica',
+            pRadiusGuess: 'presumido',
             pWhatText: (km, d) => 'A contagem parte da <b>última passagem</b> a menos de ' + km + ' do centro do mapa, mais ' + d + ' dias. Essa duração vem do Wazeopedia, que acrescenta «ou o último dia do mês, o que for mais tarde»: <b>~N d</b> nunca superestima o tempo restante.<br><br>O que está <b>hachurado</b> é um limite superior (<b>≤ N d</b>): o trajeto que abriu a área é anterior ao histórico disponível, ou só foi encontrado além do raio informado pelo WME, ou esse raio teve de ser presumido. A data exata é desconhecida, mas não é posterior à mostrada.',
             pCache: 'Histórico em cache', pCacheNone: 'Nenhum trajeto em cache.',
             pCacheInfo: (n, a, b, age, v) => n + ' trajetos, de ' + a + ' a ' + b + ' — ou seja ' + age + ' dias de cobertura sobre os ' + v + ' de validade.',
@@ -493,6 +511,7 @@
             bOutsideTip: km => 'Nenhum trajeto conhecido a menos de ' + km + ' km do centro do mapa.',
             tipLast: (d, n, km) => 'Última passagem conhecida: a ' + d + ' (há ' + n + ' d, a ' + km + ' km).',
             tipWide: km => '⚠️ Este trajeto está além do raio indicado pelo WME (' + km + ' km). É usado porque o polígono do Waze o coloca de facto numa área percorrida, mas nada prova que tenha sido ele a abri-la. O que a abriu pode ser mais antigo: a data indicada é um máximo.',
+            tipRadiusGuess: m => '⚠️ O WME não indicou o raio das suas permissões: ' + m + ' mi presumidas. Se o seu for menor, resta menos tempo do que o indicado.',
             tipRule: n => 'Duração adotada: ' + n + ' dias após o trajeto (regra do Wazeopedia), que acrescenta «ou o último dia do mês, o que for mais tarde»: se esse arredondamento existir, a data real é posterior. O cálculo vale para o CENTRO do mapa.',
             tipRetreat: d => 'Remoção estimada a ' + d + '.',
             tipPermHere: 'Aqui o seu acesso não depende de conduzir.',
@@ -505,6 +524,7 @@
             pShortcutKO: 'Atalho de teclado indisponível (teclas já ocupadas). A caixa continua aqui e no menu Camadas.',
             pAsEditor: 'Ignorar as minhas áreas geridas (ver o que veria um editor sem permissões)',
             pWhat: 'O que o distintivo indica',
+            pRadiusGuess: 'presumido',
             pWhatText: (km, d) => 'A contagem parte da <b>última passagem</b> a menos de ' + km + ' do centro do mapa, mais ' + d + ' dias. Esta duração vem do Wazeopedia, que acrescenta «ou o último dia do mês, o que for mais tarde»: <b>~N d</b> nunca sobrestima o tempo restante.<br><br>O que está <b>tracejado</b> é um limite superior (<b>≤ N d</b>): o trajeto que abriu a área é anterior ao histórico disponível, ou só foi encontrado para lá do raio indicado pelo WME, ou esse raio teve de ser presumido. A data exata é desconhecida, mas não é posterior à indicada.',
             pCache: 'Histórico em cache', pCacheNone: 'Nenhum trajeto em cache.',
             pCacheInfo: (n, a, b, age, v) => n + ' trajetos, de ' + a + ' a ' + b + ' — ou seja ' + age + ' dias de cobertura sobre os ' + v + ' de validade.',
@@ -548,6 +568,7 @@
             bOutsideTip: km => 'אין נסיעה ידועה במרחק של עד ' + km + ' ק"מ ממרכז המפה.',
             tipLast: (d, n, km) => 'הנסיעה הידועה האחרונה: ' + d + ' (לפני ' + n + ' ימים, במרחק ' + km + ' ק"מ).',
             tipWide: km => '⚠️ נסיעה זו נמצאת מעבר לרדיוס ש-WME מדווח עליו (' + km + ' ק"מ). היא נלקחת בחשבון משום שהמצולע של Waze אכן ממקם אתכם באזור נסיעה, אך אין הוכחה שדווקא היא פתחה אותו. הנסיעה שפתחה אותו עשויה להיות ישנה יותר: התאריך המוצג הוא מקסימום.',
+            tipRadiusGuess: m => '⚠️ WME לא מסר את רדיוס ההרשאות שלך: מונחים ' + m + ' מייל. אם שלך קטן יותר, נותר לך פחות זמן מהמוצג.',
             tipRule: n => 'משך שנלקח: ' + n + ' ימים לאחר הנסיעה (כלל ה-Wazeopedia), שמוסיף «או היום האחרון של החודש, המאוחר מביניהם»: אם עיגול זה קיים, התאריך האמיתי מאוחר יותר. החישוב מתייחס למרכז המפה.',
             tipRetreat: d => 'הסרה משוערת בתאריך ' + d + '.',
             tipPermHere: 'כאן הגישה שלכם אינה תלויה בנסיעה.',
@@ -560,6 +581,7 @@
             pShortcutKO: 'קיצור המקלדת אינו זמין (המקשים תפוסים). התיבה עדיין זמינה כאן ובתפריט השכבות.',
             pAsEditor: 'התעלמות מהאזורים המנוהלים שלי (לראות מה יראה עורך ללא הרשאות)',
             pWhat: 'מה מציין התג',
+            pRadiusGuess: 'משוער',
             pWhatText: (km, d) => 'הספירה מתחילה מה<b>נסיעה האחרונה</b> במרחק של עד ' + km + ' ממרכז המפה, בתוספת ' + d + ' ימים. משך זה מגיע מה-Wazeopedia, שמוסיף «או היום האחרון של החודש, המאוחר מביניהם»: לכן <b>~N ימים</b> לעולם אינו מגזים בזמן שנותר.<br><br>מה שמסומן ב<b>קווקוו</b> הוא גבול עליון (<b>עד N ימים</b>): הנסיעה שפתחה את האזור ישנה מההיסטוריה הזמינה, או נמצאה רק מעבר לרדיוס ש-WME מדווח, או שהרדיוס הזה הונח. התאריך המדויק אינו ידוע, אך הוא אינו מאוחר מזה המוצג.',
             pCache: 'היסטוריה במטמון', pCacheNone: 'אין נסיעות במטמון.',
             pCacheInfo: (n, a, b, age, v) => n + ' נסיעות, מ-' + a + ' עד ' + b + ' — כלומר ' + age + ' ימי כיסוי מתוך ' + v + ' ימי התוקף.',
@@ -663,6 +685,9 @@
             drive: areas.filter(a => a.type === 'drive').map(a => a.geometry),
             managed: areas.filter(a => a.type === 'managed').map(a => a.geometry),
             miles: (typeof u.editableMiles === 'number' && u.editableMiles > 0) ? u.editableMiles : DEFAULT_MILES,
+            // Faux quand WME n'a pas donné le rayon et qu'on a pris DEFAULT_MILES : si le vrai est
+            // plus petit, le trajet retenu est peut-être hors de portée. Le verdict le dit alors.
+            rayonLu: typeof u.editableMiles === 'number' && u.editableMiles > 0,
             countries: u.editableCountryIDs || []
         };
     }
@@ -851,6 +876,10 @@
         return meilleur;
     }
 
+    // La profondeur retenue pour la borne : l'âge du plus vieux trajet connu, et au moins celle de
+    // l'archive de Waze (voir ARCHIVE_MIN_J).
+    const profondeurArchive = () => Math.max(ageArchiveJours(), ARCHIVE_MIN_J);
+
     function ageArchiveJours() {
         if (!cache.drives.length) return 0;
         let vieux = Infinity;
@@ -910,7 +939,8 @@
         const v = {
             permanent: (permZone || permPays) && !opts.commeEditeur,
             motif: permZone ? t('mZone') : (permPays ? t('mCountry') : null),
-            dansRoulage, rayonM, historique: cache.drives.length > 0
+            dansRoulage, rayonM, historique: cache.drives.length > 0,
+            rayonDevine: zones.rayonLu === false
         };
         if (passage) {
             v.rouleLe = passage.t;
@@ -921,7 +951,7 @@
             v.restant = restant(v.expireLe);
             v.joursRestants = v.restant.n;
         } else if (dansRoulage && cache.drives.length) {
-            v.borneMax = Math.max(0, VALID_DAYS - ageArchiveJours());
+            v.borneMax = Math.max(0, VALID_DAYS - profondeurArchive());
         }
         return v;
     }
@@ -941,6 +971,7 @@
             if (v.elargi) detail.push(t('tipWide', km1));
         }
         detail.push(t('tipRule', VALID_DAYS));
+        if (v.rayonDevine) detail.unshift(t('tipRadiusGuess', DEFAULT_MILES));
 
         if (v.permanent) {
             if (v.rouleLe) return { txt: t('bPermDrove', v.motif, v.jourEcoules), cls: 'wda-bleu', title: detail.join('\n') };
@@ -953,16 +984,18 @@
             // « ~85 j (approx.) » en couleur pleine, alors qu'un trajet plus ancien et plus proche
             // pouvait n'en laisser que 5 : c'est une BORNE HAUTE, et elle se dit comme les autres,
             // « ≤ N j », hachurée (audit du 25/09/2026).
-            const cls = couleurClasse(nCouleur(r)) + (v.elargi ? ' wda-approx' : '');
+            // Un rayon supposé fait de même : le trajet retenu est peut-être hors de portée.
+            const borne = v.elargi || v.rayonDevine;
+            const cls = couleurClasse(nCouleur(r)) + (borne ? ' wda-approx' : '');
             const txt = r.etat === 'expire' ? t('bExpired') : r.etat === 'dernierJour' ? t('bLessDay')
-                : (v.elargi ? t('bMax', r.n) : t('bLeft', r.n));
+                : (borne ? t('bMax', r.n) : t('bLeft', r.n));
             return { txt, cls, title: t('tipRetreat', new Date(v.expireLe).toLocaleDateString()) + '\n' + detail.join('\n') };
         }
         if (typeof v.borneMax === 'number') {
             // Signalé par OliveStChi le 08/09/2026 : en rouge, ce badge se lisait comme une
             // urgence alors qu'il dit une INCERTITUDE (« au plus tard »). Une couleur ne peut
             // pas porter deux sens ; les hachures disent le doute, la couleur reste le délai.
-            return { txt: t('bMax', v.borneMax), cls: couleurClasse(v.borneMax) + ' wda-approx', title: t('tipMax', v.borneMax, ageArchiveJours()) + '\n' + detail.join('\n') };
+            return { txt: t('bMax', v.borneMax), cls: couleurClasse(v.borneMax) + ' wda-approx', title: t('tipMax', v.borneMax, profondeurArchive()) + '\n' + detail.join('\n') };
         }
         if (v.dansRoulage) return { txt: t('bUnknown'), cls: 'wda-gris', title: detail.join('\n') };
         return { txt: t('bOutside'), cls: 'wda-gris', title: t('bOutsideTip', km1) + '\n' + detail.join('\n') };
@@ -1379,8 +1412,10 @@
 #${BADGE_ID}{margin-inline-start:8px;padding:1px 8px;border-radius:10px;font-size:12px;font-weight:500;
   white-space:nowrap;background:rgba(0,0,0,.62);color:#fff;vertical-align:middle;cursor:default}
 #${BADGE_ID}.wda-rouge{background:rgba(198,40,40,.9)}
-#${BADGE_ID}.wda-orange{background:rgba(230,120,0,.9)}
-#${BADGE_ID}.wda-jaune{background:rgba(200,160,0,.92)}
+/* Jaune et orange portent un texte FONCÉ : le blanc y tombait à 2,5-3:1 (WCAG 1.4.3 demande 4,5:1
+   pour ce texte de 11-12 px) — et c'est la tranche 15-60 j, celle où l'on prévoit un trajet. */
+#${BADGE_ID}.wda-orange{background:rgba(230,120,0,.9);color:#1a1a1a}
+#${BADGE_ID}.wda-jaune{background:rgba(200,160,0,.92);color:#1a1a1a}
 #${BADGE_ID}.wda-vert{background:rgba(46,125,50,.88)}
 #${BADGE_ID}.wda-bleu{background:rgba(21,101,192,.88)}
 #${BADGE_ID}.wda-gris{background:rgba(70,70,70,.7)}
@@ -1425,8 +1460,8 @@ wz-card.drive-list-item .wda-jm{position:absolute;inset-inline-end:40px;top:50%;
   padding:1px 6px;border-radius:9px;font-size:11px;font-weight:600;white-space:nowrap;
   color:#fff;background:#666;z-index:2;cursor:default}
 wz-card.drive-list-item .wda-jm.wda-rouge{background:#c62828}
-wz-card.drive-list-item .wda-jm.wda-orange{background:#e67800}
-wz-card.drive-list-item .wda-jm.wda-jaune{background:#c8a000}
+wz-card.drive-list-item .wda-jm.wda-orange{background:#e67800;color:#1a1a1a}
+wz-card.drive-list-item .wda-jm.wda-jaune{background:#c8a000;color:#1a1a1a}
 wz-card.drive-list-item .wda-jm.wda-vert{background:#2e7d32}
 wz-card.drive-list-item .wda-jm.wda-gris{background:#757575}
 /* ∞ : accès permanent, aucun décompte. Même bleu que le badge de la carte, pour que les deux
@@ -1457,7 +1492,8 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
     }
 
     function buildPane() {
-        const km = (zones.miles * 1609.344 / 1000).toFixed(3).replace(/0+$/, '') + ' km (' + zones.miles + ' mi)';
+        const km = (zones.miles * 1609.344 / 1000).toFixed(3).replace(/0+$/, '') + ' km (' + zones.miles + ' mi'
+            + (zones.rayonLu === false ? ', ' + t('pRadiusGuess') : '') + ')';
         return `<div class="wda-pane"${isRTL() ? ' dir="rtl"' : ''}>
   <h4>${SCRIPT_NAME} <span class="wda-note">v${VERSION}</span></h4>
   <div class="wda-etat" id="wda-etat">…</div>
