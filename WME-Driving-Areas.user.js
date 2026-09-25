@@ -1657,43 +1657,53 @@
    spécificité est identique. Le doute a donc sa propre marque, la couleur garde son sens. */
 #${BADGE_ID}.wda-approx{
   background-image:repeating-linear-gradient(135deg,rgba(0,0,0,.26) 0 4px,transparent 4px 8px)}
-/* Onglet Scripts — calqué sur #wct-sidebar et #wjn-sidebar (couleurs de la charte). */
-#wda-sidebar{padding:10px 12px;font-family:'Rubik','Open Sans',sans-serif;font-size:12px;line-height:1.45;color:#2d3748}
-#wda-sidebar h2{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#1565c0;margin:0 0 8px}
-#wda-sidebar h2 .wda-ver{font-size:11px;font-weight:400;color:#566372}
+/* Onglet Scripts — les valeurs de WRP (qui reprend WCT via WJN), MESURÉES dans WME le 25/09/2026 sur
+   les onglets de WCT, WJN et WRP : titre 13 px en #2196f3 (police des h2 de WME), version #9e9e9e,
+   texte #2d3748, notes #566372, sections en capitales #2196f3, boutons en pilule, pied #9e9e9e.
+   La 0.07.00 avait d'abord pris le bleu foncé #1565c0 et des boutons carrés : écart relevé par l'auteur. */
+#wda-sidebar{padding:10px 12px;font-family:'Rubik','Open Sans',sans-serif;font-size:12px;color:#2d3748}
+#wda-sidebar h2{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#2196f3;margin:0 0 8px}
+#wda-sidebar h2 .wda-ver{font-size:11px;font-weight:400;color:#9e9e9e}
 #wda-sidebar .wda-sb-ico{display:inline-flex}
-#wda-sidebar :focus-visible{outline:2px solid #1565c0;outline-offset:1px}
-.wda-sb-hint{font-size:11px;color:#566372;line-height:1.6;margin:0 0 8px}
+#wda-sidebar :focus-visible{outline:2px solid #2196f3;outline-offset:1px}
+.wda-sb-hint{font-size:11px;color:#566372;line-height:1.6;margin:0 0 6px}
 .wda-sb-maj{margin:0 0 8px;padding:5px 8px;border-radius:8px;background:#ffebee;color:#c62828;font-size:11px;font-weight:600}
 .wda-sb-maj[hidden]{display:none}
 .wda-sb-maj a{color:#c62828}
-.wda-sb-sec{font-size:11px;font-weight:700;color:#1565c0;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 6px}
-.wda-toggle-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px}
-.wda-toggle-row>span{font-size:12px;font-weight:600}
+.wda-sb-sec{font-size:11px;font-weight:700;color:#2196f3;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 6px}
+.wda-toggle-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px}
+.wda-toggle-row>span{font-size:12px;font-weight:600;line-height:1.35}
 .wda-toggle{position:relative;width:36px;height:20px;flex-shrink:0;margin:0}
 .wda-toggle input{opacity:0;width:0;height:0}
-/* Rail éteint #8a94a0 : 3,08:1 sur blanc (WCAG 1.4.11) — même décision que WRP et WCT. */
+/* Rail éteint #8a94a0 : 3,08:1 sur blanc (WCAG 1.4.11) — même décision que WRP et WCT 1.21. */
 .wda-toggle-slider{position:absolute;cursor:pointer;inset:0;background:#8a94a0;border-radius:50px;transition:background .2s}
 .wda-toggle-slider:before{content:'';position:absolute;width:14px;height:14px;inset-inline-start:3px;bottom:3px;background:#fff;border-radius:50%;transition:transform .2s}
-.wda-toggle input:checked+.wda-toggle-slider{background:#1565c0}
+.wda-toggle input:checked+.wda-toggle-slider{background:#2196f3}
 .wda-toggle input:checked+.wda-toggle-slider:before{transform:translateX(16px)}
 #wda-sidebar[dir="rtl"] .wda-toggle input:checked+.wda-toggle-slider:before{transform:translateX(-16px)}
-.wda-toggle input:focus-visible+.wda-toggle-slider{outline:2px solid #1565c0;outline-offset:2px}
-.wda-champ{display:flex;flex-direction:column;gap:3px;margin:10px 0 4px;font-weight:600}
+.wda-toggle input:focus-visible+.wda-toggle-slider{outline:2px solid #2196f3;outline-offset:2px}
+.wda-champ{display:flex;flex-direction:column;gap:3px;margin:10px 0 4px;font-weight:600;font-size:12px}
 .wda-champ select{box-sizing:border-box;width:100%;max-width:100%;min-width:0;height:26px;padding:1px 4px;font:12px 'Rubik','Open Sans',sans-serif}
 .wda-help-section{border:1px solid #dde3ea;border-radius:8px;margin-bottom:4px;overflow:hidden}
-.wda-help-hdr{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%;margin:0;border:none;
-  font-family:inherit;text-align:start;padding:5px 9px;font-size:11px;font-weight:700;cursor:pointer;background:#f5f7f9;color:#2d3748}
+.wda-help-hdr{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%;height:auto;min-height:0;margin:0;border:none;
+  font-family:inherit;text-align:start;padding:5px 9px;font-size:11px;font-weight:700;cursor:pointer;background:#f5f7f9;color:#2d3748;user-select:none}
 .wda-help-hdr.on{color:#1565c0;background:#e3f2fd}
 .wda-help-hdr:hover{background:#eef4fb}
-.wda-help-body{padding:7px 9px;font-size:11px;line-height:1.5}
+.wda-help-body{padding:7px 9px;font-size:11px;line-height:1.5;color:#2d3748}
+/* Pied : les liens (comme WJN), puis la mention 🔒. */
 .wda-sb-links{margin-top:12px;padding-top:10px;border-top:1px solid #dde3ea;font-size:11px;color:#566372;text-align:center}
-.wda-sb-links a{color:#1565c0}
-.wda-sb-foot{margin:8px 0 0;font-size:11px;color:#566372;line-height:1.6;text-align:center}
-.wda-pane{font-size:12px;line-height:1.45}
+.wda-sb-links a{color:#2196f3}
+.wda-sb-foot{margin:10px 0 0;font-size:11px;color:#9e9e9e;line-height:1.6}
+/* Boutons : la pilule de WRP. Plein = l'action principale (un seul), neutre = le reste. */
+#wda-sidebar .wda-btn{display:inline-flex;align-items:center;gap:5px;height:auto;min-height:0;padding:3px 10px;margin:0;
+  border:none;border-radius:50px;font:600 11px 'Rubik','Open Sans',sans-serif;cursor:pointer;white-space:nowrap;background:#2196f3;color:#fff}
+#wda-sidebar .wda-btn:hover{filter:brightness(1.08)}
+#wda-sidebar .wda-btn[disabled]{opacity:.5;cursor:default;filter:none}
+#wda-sidebar .wda-btn-sec{background:#dde3ea;color:#2d3748;margin-top:6px}
+#wda-sidebar .wda-etat{margin:6px 0;padding:5px 8px;background:#f5f7f9;border:1px solid #dde3ea;border-radius:8px;font-size:11px;line-height:1.5;color:#2d3748}
 /* Légende : les couleurs des pastilles ne se devinent pas — un éditeur ④ a lu « 2 jours »
    là où le code dit 14. Les mêmes teintes que les pastilles de « Vos trajets ». */
-.wda-pane .wda-lg{display:flex;align-items:center;gap:8px;margin:3px 0;font-size:12px;color:#555}
+.wda-pane .wda-lg{display:flex;align-items:center;gap:8px;margin:3px 0;font-size:11px;color:#2d3748}
 .wda-pane .wda-sw{flex:0 0 auto;width:26px;height:14px;border-radius:7px;background:#757575}
 .wda-pane .wda-tr{flex:0 0 26px;display:inline-block}
 .wda-pane .wda-sw.wda-rouge{background:#c62828}
@@ -1705,11 +1715,6 @@
 /* Après les teintes, jamais avant : « background » les remettrait à none. */
 .wda-pane .wda-sw.wda-approx{
   background-image:repeating-linear-gradient(135deg,rgba(0,0,0,.32) 0 4px,transparent 4px 8px)}
-.wda-pane .wda-btn{display:inline-block;padding:5px 12px;border-radius:6px;border:1px solid #1565c0;
-  background:#1565c0;color:#fff;cursor:pointer;font-size:12px}
-.wda-pane .wda-btn[disabled]{opacity:.5;cursor:default}
-.wda-pane .wda-btn-sec{background:#fff;color:#1565c0;margin-top:6px}
-.wda-pane .wda-etat{margin:8px 0;padding:6px 8px;background:#f2f4f7;border-radius:6px;color:#333}
 .wda-pane .wda-note{color:#566372;font-size:11px}
 .wda-pane #wda-prog{margin-top:4px}
 .wda-pane .wda-alerte{color:#c62828;font-size:11px}
