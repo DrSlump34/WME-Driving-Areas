@@ -1,6 +1,6 @@
 # WDA — WME Driving Areas · Dossier de spécifications
 
-> **Version du code décrite ici : 0.07.00** (lue dans le bloc `==UserScript==` de
+> **Version du code décrite ici : 0.07.01** (lue dans le bloc `==UserScript==` de
 > `WME-Driving-Areas.user.js`).
 > Diffusé sur **GreasyFork 593493**, dépôt `github.com/DrSlump34/WME-Driving-Areas`,
 > fil Discuss **411120**.
