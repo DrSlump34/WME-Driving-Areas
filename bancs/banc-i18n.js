@@ -42,5 +42,32 @@ for (const k of ['pLegend', 'lgExpired', 'lgPerm', 'lgApprox', 'lgNone']) {
     console.log('  ' + (ok ? 'ok   ' : 'ECHEC') + ' ' + k.padEnd(10)
         + (ok ? 'distincte dans les 8' : 'identique au français en ' + copie.join(', ')));
 }
+// ── Chaque phrase est comparée à l'anglais ET au français, rendue avec les mêmes arguments.
+// Audit du 25/09/2026 : une clé allemande laissée en anglais passait — le contrôle ci-dessus ne
+// regardait que cinq clés, et seulement contre le français. Les rares phrases qui s'écrivent
+// pareil dans deux langues sont nommées ici, avec la raison ; toute autre identité échoue.
+console.log('--- aucune phrase recopiée de l\'anglais ou du français ---');
+const PAREIL = {
+    // clé : langues où l'identité est normale
+    // « D » est l'initiale de día / dia : l'espagnol et le portugais écrivent D-41 comme l'anglais.
+    jm: ['es', 'pt-BR', 'pt-PT'], jp: ['es', 'pt-BR', 'pt-PT'], lgUnit: ['es', 'pt-BR', 'pt-PT'],
+};
+const rendre = (v) => typeof v === 'function' ? v(3, '01/02/2026', 4, 5, 6) : v;
+let identiques = 0;
+for (const n of noms) {
+    for (const k of ref) {
+        for (const src of ['en', 'fr']) {
+            if (n === src) continue;
+            if (n === 'pt-PT' && src === 'pt-BR') continue;
+            const a = rendre(DICO[n][k]), b = rendre(DICO[src][k]);
+            if (a !== b) continue;
+            if (/^[\s\d.,:;!?()≤~+\-−<>/|∞⤓…'"«»’]*$/.test(String(a))) continue;   // symboles seuls
+            if ((PAREIL[k] || []).includes(n)) continue;
+            identiques++;
+            console.log('  ECHEC ' + n.padEnd(6) + ' ' + k.padEnd(12) + ' identique à « ' + src + ' » : ' + String(a).slice(0, 60));
+        }
+    }
+}
+if (identiques) ko++; else console.log('  ok    aucune');
 console.log(ko ? '\n' + ko + ' ECHEC(S)' : '\nTOUT PASSE — ' + noms.length + ' langues, ' + ref.length + ' clés chacune');
 process.exit(ko ? 1 : 0);

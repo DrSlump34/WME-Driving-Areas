@@ -72,6 +72,7 @@
     const CONCURRENCE = 4;          // requêtes SessionGPS en parallèle
     const PAGE = 50;                // count max accepté par Archive/List (99 passe, 100 lève)
     const MOVE_DEBOUNCE = 700;      // anti-rebond du recalcul sur déplacement de carte
+    const RAFRAICHIR_MS = 5 * 60000; // le décompte se refait toutes les 5 min : il vieillit avec l'horloge
     // Le polygone servi par Waze est PLUS LARGE que le tampon annoncé par editableMiles.
     // Mesuré le 29/08/2026 sur une zone de 204 km² ouverte par un trajet connu : 25 % de ses
     // points sont à plus de 6,437 km de toute trace, jusqu'à 11,4 km. On élargit donc la
@@ -146,6 +147,7 @@
         fr: {
             jm: n => 'J-' + n, jp: n => 'J+' + n,
             jTip: (d, n) => 'Ce trajet cesse de donner des droits le ' + d + ', soit dans ' + n + ' jour(s).',
+            jTipLast: d => 'Ce trajet cesse de donner des droits le ' + d + ', dans moins d’un jour.',
             jExpTip: d => 'Ce trajet ne donne plus de droits depuis le ' + d + '.',
             jInfZone: d => 'Votre accès ici est permanent (zone gérée) : ce décompte ne vous concerne pas. Pour information, ce trajet cesserait de donner des droits le ' + d + '.',
             jInfPays: (n, d) => 'Vous gérez ' + n + ' pays : si ce trajet s\'y trouve, votre accès est permanent. Waze ne descend aucune géométrie de pays, cela ne peut donc pas être vérifié ici. Sinon, ce trajet cesse de donner des droits le ' + d + '.',
@@ -155,6 +157,7 @@
             bPerm: m => 'accès permanent (' + m + ')',
             bPermDrove: (m, n) => 'accès permanent (' + m + ') · roulé il y a ' + n + ' j',
             bLeft: n => '~' + n + ' j restants ici', bExpired: 'droit expiré ici (selon le calcul)',
+            bLessDay: '< 1 j restant ici',
             bApprox: ' (approx.)', bMax: n => '≤ ' + n + ' j restants ici',
             bUnknown: 'zone parcourue, date inconnue', bOutside: 'hors zone parcourue',
             bOutsideTip: km => 'Aucun trajet connu à moins de ' + km + ' km du centre de la vue.',
@@ -199,6 +202,7 @@
         en: {
             jm: n => 'D-' + n, jp: n => 'D+' + n,
             jTip: (d, n) => 'This drive stops granting rights on ' + d + ', i.e. in ' + n + ' day(s).',
+            jTipLast: d => 'This drive stops granting rights on ' + d + ', in less than a day.',
             jExpTip: d => 'This drive has granted no rights since ' + d + '.',
             jInfZone: d => 'Your access here is permanent (managed area): this countdown does not concern you. For reference, this drive would stop granting rights on ' + d + '.',
             jInfPays: (n, d) => 'You manage ' + n + ' country/ies: if this drive is inside one, your access is permanent. Waze sends no country geometry, so this cannot be checked here. Otherwise this drive stops granting rights on ' + d + '.',
@@ -208,6 +212,7 @@
             bPerm: m => 'permanent access (' + m + ')',
             bPermDrove: (m, n) => 'permanent access (' + m + ') · driven ' + n + ' d ago',
             bLeft: n => '~' + n + ' d left here', bExpired: 'rights expired here (per this estimate)',
+            bLessDay: '< 1 d left here',
             bApprox: ' (approx.)', bMax: n => '≤ ' + n + ' d left here',
             bUnknown: 'driven area, date unknown', bOutside: 'outside your driven area',
             bOutsideTip: km => 'No known drive within ' + km + ' km of the map centre.',
@@ -252,6 +257,7 @@
         de: {
             jm: n => 'T-' + n, jp: n => 'T+' + n,
             jTip: (d, n) => 'Diese Fahrt gewährt ab dem ' + d + ' keine Rechte mehr, also in ' + n + ' Tag(en).',
+            jTipLast: d => 'Diese Fahrt gewährt ab dem ' + d + ' keine Rechte mehr, also in weniger als einem Tag.',
             jExpTip: d => 'Diese Fahrt gewährt seit dem ' + d + ' keine Rechte mehr.',
             jInfZone: d => 'Ihr Zugriff ist hier dauerhaft (verwalteter Bereich): dieser Countdown betrifft Sie nicht. Zur Information: diese Fahrt würde am ' + d + ' aufhören, Rechte zu gewähren.',
             jInfPays: (n, d) => 'Sie verwalten ' + n + ' Land/Länder: liegt diese Fahrt darin, ist Ihr Zugriff dauerhaft. Waze liefert keine Ländergeometrie, das lässt sich hier also nicht prüfen. Andernfalls endet diese Fahrt am ' + d + '.',
@@ -261,6 +267,7 @@
             bPerm: m => 'dauerhafter Zugriff (' + m + ')',
             bPermDrove: (m, n) => 'dauerhafter Zugriff (' + m + ') · gefahren vor ' + n + ' T',
             bLeft: n => '~' + n + ' T verbleiben hier', bExpired: 'Recht hier abgelaufen (laut Berechnung)',
+            bLessDay: '< 1 T verbleibt hier',
             bApprox: ' (ungefähr)', bMax: n => '≤ ' + n + ' T verbleiben hier',
             bUnknown: 'befahrener Bereich, Datum unbekannt', bOutside: 'außerhalb Ihres befahrenen Bereichs',
             bOutsideTip: km => 'Keine bekannte Fahrt innerhalb von ' + km + ' km um die Kartenmitte.',
@@ -305,6 +312,7 @@
         es: {
             jm: n => 'D-' + n, jp: n => 'D+' + n,
             jTip: (d, n) => 'Este viaje deja de otorgar permisos el ' + d + ', es decir en ' + n + ' día(s).',
+            jTipLast: d => 'Este viaje deja de otorgar permisos el ' + d + ', en menos de un día.',
             jExpTip: d => 'Este viaje ya no otorga permisos desde el ' + d + '.',
             jInfZone: d => 'Su acceso aquí es permanente (área gestionada): esta cuenta atrás no le concierne. A título informativo, este viaje dejaría de otorgar permisos el ' + d + '.',
             jInfPays: (n, d) => 'Usted gestiona ' + n + ' país(es): si este viaje está dentro, su acceso es permanente. Waze no envía la geometría de los países, así que no puede comprobarse aquí. En caso contrario, este viaje deja de otorgar permisos el ' + d + '.',
@@ -314,6 +322,7 @@
             bPerm: m => 'acceso permanente (' + m + ')',
             bPermDrove: (m, n) => 'acceso permanente (' + m + ') · conducido hace ' + n + ' d',
             bLeft: n => '~' + n + ' d restantes aquí', bExpired: 'permiso caducado aquí (según el cálculo)',
+            bLessDay: '< 1 d restante aquí',
             bApprox: ' (aprox.)', bMax: n => '≤ ' + n + ' d restantes aquí',
             bUnknown: 'área conducida, fecha desconocida', bOutside: 'fuera de su área conducida',
             bOutsideTip: km => 'Ningún viaje conocido a menos de ' + km + ' km del centro del mapa.',
@@ -358,6 +367,7 @@
         it: {
             jm: n => 'G-' + n, jp: n => 'G+' + n,
             jTip: (d, n) => 'Questo viaggio smette di dare permessi il ' + d + ', cioè fra ' + n + ' giorno/i.',
+            jTipLast: d => 'Questo viaggio smette di dare permessi il ' + d + ', fra meno di un giorno.',
             jExpTip: d => 'Questo viaggio non dà più permessi dal ' + d + '.',
             jInfZone: d => 'Il tuo accesso qui è permanente (area gestita): questo conto alla rovescia non ti riguarda. A titolo informativo, questo viaggio smetterebbe di dare permessi il ' + d + '.',
             jInfPays: (n, d) => 'Gestisci ' + n + ' paese/i: se questo viaggio vi rientra, il tuo accesso è permanente. Waze non invia la geometria dei paesi, quindi non è verificabile qui. Altrimenti questo viaggio smette di dare permessi il ' + d + '.',
@@ -367,6 +377,7 @@
             bPerm: m => 'accesso permanente (' + m + ')',
             bPermDrove: (m, n) => 'accesso permanente (' + m + ') · guidato ' + n + ' g fa',
             bLeft: n => '~' + n + ' g rimasti qui', bExpired: 'permesso scaduto qui (secondo il calcolo)',
+            bLessDay: '< 1 g rimasto qui',
             bApprox: ' (circa)', bMax: n => '≤ ' + n + ' g rimasti qui',
             bUnknown: 'area percorsa, data sconosciuta', bOutside: 'fuori dalla tua area percorsa',
             bOutsideTip: km => 'Nessun viaggio noto entro ' + km + ' km dal centro della mappa.',
@@ -411,6 +422,7 @@
         'pt-BR': {
             jm: n => 'D-' + n, jp: n => 'D+' + n,
             jTip: (d, n) => 'Este trajeto deixa de conceder permissões em ' + d + ', ou seja, em ' + n + ' dia(s).',
+            jTipLast: d => 'Este trajeto deixa de conceder permissões em ' + d + ', em menos de um dia.',
             jExpTip: d => 'Este trajeto não concede permissões desde ' + d + '.',
             jInfZone: d => 'Seu acesso aqui é permanente (área gerenciada): esta contagem não lhe diz respeito. A título informativo, este trajeto deixaria de conceder permissões em ' + d + '.',
             jInfPays: (n, d) => 'Você gerencia ' + n + ' país(es): se este trajeto estiver dentro, seu acesso é permanente. O Waze não envia a geometria dos países, então isso não pode ser verificado aqui. Caso contrário, este trajeto deixa de conceder permissões em ' + d + '.',
@@ -420,6 +432,7 @@
             bPerm: m => 'acesso permanente (' + m + ')',
             bPermDrove: (m, n) => 'acesso permanente (' + m + ') · dirigido há ' + n + ' d',
             bLeft: n => '~' + n + ' d restantes aqui', bExpired: 'permissão expirada aqui (conforme o cálculo)',
+            bLessDay: '< 1 d restante aqui',
             bApprox: ' (aprox.)', bMax: n => '≤ ' + n + ' d restantes aqui',
             bUnknown: 'área percorrida, data desconhecida', bOutside: 'fora da sua área percorrida',
             bOutsideTip: km => 'Nenhum trajeto conhecido a menos de ' + km + ' km do centro do mapa.',
@@ -464,6 +477,7 @@
         'pt-PT': {
             jm: n => 'D-' + n, jp: n => 'D+' + n,
             jTip: (d, n) => 'Este trajeto deixa de conceder permissões a ' + d + ', ou seja, dentro de ' + n + ' dia(s).',
+            jTipLast: d => 'Este trajeto deixa de conceder permissões a ' + d + ', dentro de menos de um dia.',
             jExpTip: d => 'Este trajeto já não concede permissões desde ' + d + '.',
             jInfZone: d => 'O seu acesso aqui é permanente (área gerida): esta contagem não lhe diz respeito. A título informativo, este trajeto deixaria de conceder permissões a ' + d + '.',
             jInfPays: (n, d) => 'Gere ' + n + ' país(es): se este trajeto estiver dentro, o seu acesso é permanente. O Waze não envia a geometria dos países, pelo que não é verificável aqui. Caso contrário, este trajeto deixa de conceder permissões a ' + d + '.',
@@ -473,6 +487,7 @@
             bPerm: m => 'acesso permanente (' + m + ')',
             bPermDrove: (m, n) => 'acesso permanente (' + m + ') · conduzido há ' + n + ' d',
             bLeft: n => '~' + n + ' d restantes aqui', bExpired: 'permissão expirada aqui (segundo o cálculo)',
+            bLessDay: '< 1 d restante aqui',
             bApprox: ' (aprox.)', bMax: n => '≤ ' + n + ' d restantes aqui',
             bUnknown: 'área percorrida, data desconhecida', bOutside: 'fora da sua área percorrida',
             bOutsideTip: km => 'Nenhum trajeto conhecido a menos de ' + km + ' km do centro do mapa.',
@@ -517,6 +532,7 @@
         he: {
             jm: n => 'י-' + n, jp: n => 'י+' + n,
             jTip: (d, n) => 'נסיעה זו מפסיקה להעניק הרשאות בתאריך ' + d + ', כלומר בעוד ' + n + ' ימים.',
+            jTipLast: d => 'נסיעה זו מפסיקה להעניק הרשאות בתאריך ' + d + ', בעוד פחות מיום.',
             jExpTip: d => 'נסיעה זו אינה מעניקה הרשאות מאז ' + d + '.',
             jInfZone: d => 'הגישה שלכם כאן קבועה (אזור מנוהל): הספירה הזו אינה נוגעת לכם. לידיעה, נסיעה זו הייתה מפסיקה להעניק הרשאות בתאריך ' + d + '.',
             jInfPays: (n, d) => 'אתם מנהלים ' + n + ' מדינות: אם נסיעה זו נמצאת בהן, הגישה שלכם קבועה. Waze אינו שולח גאומטריה של מדינות, ולכן לא ניתן לבדוק זאת כאן. אחרת, נסיעה זו מפסיקה להעניק הרשאות בתאריך ' + d + '.',
@@ -526,6 +542,7 @@
             bPerm: m => 'גישה קבועה (' + m + ')',
             bPermDrove: (m, n) => 'גישה קבועה (' + m + ') · נסיעה לפני ' + n + ' ימים',
             bLeft: n => 'נותרו כאן ~' + n + ' ימים', bExpired: 'ההרשאה כאן פגה (לפי החישוב)',
+            bLessDay: 'נותר כאן פחות מיום אחד',
             bApprox: ' (בקירוב)', bMax: n => 'נותרו כאן ' + n + ' ימים לכל היותר',
             bUnknown: 'אזור שנסעתם בו, תאריך לא ידוע', bOutside: 'מחוץ לאזור הנסיעה שלכם',
             bOutsideTip: km => 'אין נסיעה ידועה במרחק של עד ' + km + ' ק"מ ממרכז המפה.',
@@ -841,6 +858,30 @@
         return Math.floor((Date.now() - vieux) / D_MS);
     }
 
+    // ⭐ LA règle du temps restant, et elle n'existe qu'ici : le badge, le calque et les pastilles
+    // la lisent tous. La 0.06.00 l'écrivait à trois endroits, arrondie VERS LE HAUT (Math.ceil) :
+    // 9 h restantes s'affichaient « 1 j », 14,2 j s'affichaient 15 — orange au lieu de rouge. C'est
+    // le sens que §8.4 interdit : ne jamais annoncer plus de temps qu'il n'en reste (audit du
+    // 25/09/2026). Arrondi vers le BAS, avec un état à part pour le dernier jour : « < 1 j », en
+    // rouge — pas « expiré », puisque le droit court encore.
+    function echeance(t0) {
+        // Deux lectures de « 90 jours après » : 90 × 24 h, ou 90 jours de calendrier à la même
+        // heure. Elles diffèrent d'une heure quand un changement d'heure tombe entre les deux. La
+        // règle réelle de Waze n'est pas mesurée : on retient la plus PRÉCOCE, pour ne jamais
+        // repousser l'échéance.
+        const cal = new Date(t0);
+        cal.setDate(cal.getDate() + VALID_DAYS);
+        return Math.min(t0 + VALID_DAYS * D_MS, cal.getTime());
+    }
+    function restant(expireLe) {
+        const ms = expireLe - Date.now();
+        if (ms <= 0) return { ms, n: 0, etat: 'expire', depuis: Math.floor(-ms / D_MS) };
+        const n = Math.floor(ms / D_MS);
+        return { ms, n, etat: n === 0 ? 'dernierJour' : 'jours' };
+    }
+    // Le nombre de jours qui décide de la COULEUR : le dernier jour reste rouge (1), jamais gris.
+    const nCouleur = r => r.etat === 'expire' ? 0 : Math.max(1, r.n);
+
     function evaluer(lon, lat) {
         if (!zones) zones = lireZones();
         const rayonM = zones.miles * 1609.344;
@@ -873,8 +914,9 @@
             v.distM = passage.dist;
             v.elargi = elargi;
             v.jourEcoules = Math.floor((Date.now() - passage.t) / D_MS);
-            v.expireLe = passage.t + VALID_DAYS * D_MS;
-            v.joursRestants = Math.ceil((v.expireLe - Date.now()) / D_MS);
+            v.expireLe = echeance(passage.t);
+            v.restant = restant(v.expireLe);
+            v.joursRestants = v.restant.n;
         } else if (dansRoulage && cache.drives.length) {
             v.borneMax = Math.max(0, VALID_DAYS - ageArchiveJours());
         }
@@ -901,10 +943,11 @@
             if (v.rouleLe) return { txt: t('bPermDrove', v.motif, v.jourEcoules), cls: 'wda-bleu', title: detail.join('\n') };
             return { txt: t('bPerm', v.motif), cls: 'wda-bleu', title: t('tipPermHere') + '\n' + detail.join('\n') };
         }
-        if (typeof v.joursRestants === 'number') {
-            const n = v.joursRestants;
-            const cls = couleurClasse(n);
-            const txt = (n <= 0 ? t('bExpired') : t('bLeft', n)) + (v.elargi ? t('bApprox') : '');
+        if (v.restant) {
+            const r = v.restant;
+            const cls = couleurClasse(nCouleur(r));
+            const txt = (r.etat === 'expire' ? t('bExpired') : r.etat === 'dernierJour' ? t('bLessDay') : t('bLeft', r.n))
+                + (v.elargi ? t('bApprox') : '');
             return { txt, cls, title: t('tipRetreat', new Date(v.expireLe).toLocaleDateString()) + '\n' + detail.join('\n') };
         }
         if (typeof v.borneMax === 'number') {
@@ -997,7 +1040,8 @@
     // Une trace expirée passe désormais au gris et non plus au rouge vif : elle ne donne plus
     // rien, la crier en rouge la faisait lire comme une urgence.
     function couleurPour(t0) {
-        return SEUILS.find(s => Math.ceil((t0 + VALID_DAYS * D_MS - Date.now()) / D_MS) <= s.max).trace;
+        const n = nCouleur(restant(echeance(t0)));
+        return SEUILS.find(s => n <= s.max).trace;
     }
 
     function creerCalque() {
@@ -1260,8 +1304,9 @@
     function poserEcheance(carte, id) {
         const d = cache.drives.find(x => x.id === id);
         if (!d) return;   // trajet pas encore en cache : rien à afficher plutôt qu'un chiffre faux
-        const n = Math.ceil((d.t + VALID_DAYS * D_MS - Date.now()) / D_MS);
-        const dateFin = new Date(d.t + VALID_DAYS * D_MS).toLocaleDateString();
+        const fin = echeance(d.t);
+        const r = restant(fin);
+        const dateFin = new Date(fin).toLocaleDateString();
         const e = document.createElement('span');
         const perm = permanenceDuTrajet(d);
         if (perm) {
@@ -1269,12 +1314,12 @@
             e.textContent = '∞';
             e.title = perm === 'zone' ? t('jInfZone', dateFin) : t('jInfPays', zones.countries.length, dateFin);
         } else {
-            e.className = 'wda-jm ' + couleurClasse(n);
+            e.className = 'wda-jm ' + couleurClasse(nCouleur(r));
             // Expiré : « J+5 » plutôt qu'un mot. La pastille a une largeur fixe, et « expiré »
             // traduit (« abgelaufen ») en déborderait — le format signé tient dans toutes les
-            // langues et dit en plus depuis combien de temps.
-            e.textContent = n > 0 ? t('jm', n) : t('jp', -n);
-            e.title = n > 0 ? t('jTip', dateFin, n) : t('jExpTip', dateFin);
+            // langues et dit en plus depuis combien de temps. Le dernier jour : J-0, en rouge.
+            e.textContent = r.etat === 'expire' ? t('jp', r.depuis) : t('jm', r.n);
+            e.title = r.etat === 'expire' ? t('jExpTip', dateFin) : r.etat === 'dernierJour' ? t('jTipLast', dateFin) : t('jTip', dateFin, r.n);
         }
         carte.appendChild(e);
     }
@@ -1310,8 +1355,9 @@
         majPanneau();
     }
 
-    // Les échéances vieillissent : après un changement de jour, ou un chargement d'historique,
-    // il faut les refaire. On retire les nôtres et on laisse poserBoutonsGPX les reposer.
+    // Les échéances vieillissent : on retire les nôtres et on laisse poserBoutonsGPX les reposer.
+    // Appelé après un chargement d'historique, un changement de réglage, et par l'horloge (voir
+    // RAFRAICHIR_MS dans init) : un droit bascule à l'HEURE du trajet, pas à minuit.
     function rafraichirEcheances() {
         document.querySelectorAll('.wda-jm').forEach(e => e.remove());
         document.querySelectorAll('.wda-gpx').forEach(e => e.remove());
@@ -1555,6 +1601,13 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
         // ne le signale. Un sondage d'une seconde coûte une querySelector et suffit ; il sort
         // immédiatement quand le panneau n'est pas affiché.
         setInterval(() => { poserBoutonsGPX().catch(e => log('boutons GPX : ' + e.message)); }, 1000);
+
+        // Le décompte vieillit tout seul : sans ce rafraîchissement, une pastille posée gardait sa
+        // valeur tant que la page restait ouverte, et un droit expiré pouvait encore afficher J-1
+        // (audit du 25/09/2026). Au retour sur l'onglet aussi : un onglet caché ne tourne presque plus.
+        const rafraichir = () => { rafraichirEcheances(); recalculer(true); };
+        setInterval(rafraichir, RAFRAICHIR_MS);
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) rafraichir(); });
 
         log('v' + VERSION + ' prêt — langue ' + _lang + ', ' + cache.drives.length + ' trajets en cache, rayon ' + zones.miles + ' mi');
     };

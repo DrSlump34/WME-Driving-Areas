@@ -4,3 +4,5 @@ Archives/
 Thumbs.db
 desktop.ini
 .DS_Store
+# Rapports d audit : conservés en local
+Audits/
