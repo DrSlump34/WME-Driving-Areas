@@ -21,13 +21,19 @@
 // @author       DrSlump34
 // @copyright    DrSlump34 2026
 // @license      MIT
+// @homepageURL  https://github.com/DrSlump34/WME-Driving-Areas
+// @supportURL   https://www.waze.com/discuss/t/411120
+// @downloadURL  https://update.greasyfork.org/scripts/593493/WME%20Driving%20Areas.user.js
+// @updateURL    https://update.greasyfork.org/scripts/593493/WME%20Driving%20Areas.meta.js
 // @match        https://www.waze.com/*/editor*
 // @match        https://www.waze.com/editor*
 // @match        https://beta.waze.com/*/editor*
 // @exclude      https://www.waze.com/*user/*editor/*
 // @exclude      https://www.waze.com/discuss/*
 // @exclude      https://www.waze.com/editor/sdk/*
-// @grant        none
+// @grant        GM_xmlhttpRequest
+// @grant        unsafeWindow
+// @connect      update.greasyfork.org
 // @run-at       document-idle
 // ==/UserScript==
 
@@ -65,6 +71,22 @@
     // Pas de const figée : deux sources de vérité finissent par diverger. Hors gestionnaire
     // (chargement direct par <script src=localhost>), on affiche 'dev' — un numéro faux se voit.
     const VERSION = (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) || 'dev';
+    // La page de WME. Depuis la 0.07.00 le script demande GM_xmlhttpRequest (la détection de
+    // nouvelle version, comme WCT et WRP) : le gestionnaire l'isole alors dans un bac à sable, et
+    // W, getWmeSdk et fetch de la page se lisent par unsafeWindow.
+    const pw = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
+    const URL_GF = 'https://greasyfork.org/scripts/593493-wme-driving-areas';
+    const URL_GH = 'https://github.com/DrSlump34/WME-Driving-Areas';
+    const URL_DISCUSS = 'https://www.waze.com/discuss/t/411120';
+    const gmScript = () => (typeof GM_info !== 'undefined' && GM_info.script) || {};
+    const URL_MAJ = gmScript().updateURL || 'https://update.greasyfork.org/scripts/593493/WME%20Driving%20Areas.meta.js';
+    const URL_INSTALLER = gmScript().downloadURL || 'https://update.greasyfork.org/scripts/593493/WME%20Driving%20Areas.user.js';
+    // L'icône du script (celle de @icon), la même dans l'onglet Scripts et en tête du panneau.
+    const ICONE = '<svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="12" fill="#1565c0"/>'
+        + '<rect x="15" y="8" width="34" height="6" rx="3" fill="#fff"/><rect x="15" y="50" width="34" height="6" rx="3" fill="#fff"/>'
+        + '<path d="M19 14 L45 14 L34 32 L45 50 L19 50 L30 32 Z" fill="#fff"/><path d="M23 18 L41 18 L32 32 Z" fill="#fb8c00"/>'
+        + '<path d="M32 40 L41 46 L23 46 Z" fill="#fb8c00"/><rect x="31" y="30" width="2" height="12" fill="#fb8c00"/></svg>';
+    const icone = px => ICONE.replace('<svg ', '<svg width="' + px + '" height="' + px + '" ');
 
     // ---------- Réglages ----------
     const VALID_DAYS = 90;          // durée du droit obtenu en roulant (Wazeopedia « Editable area »)
@@ -149,7 +171,7 @@
     // code ISO « he », mais d'anciens navigateurs renvoient encore le code hérité « iw ».
     const detectLang = () => {
         try {
-            const l = (window.W?.userscripts?.state?.locale || document.documentElement.lang || navigator.language || 'en').toLowerCase();
+            const l = (pw.W?.userscripts?.state?.locale || document.documentElement.lang || navigator.language || 'en').toLowerCase();
             if (l.startsWith('pt')) return l.includes('br') ? 'pt-BR' : 'pt-PT';
             if (l.startsWith('he') || l.startsWith('iw')) return 'he';
             return LANGS.map(x => x.code).find(c => !c.includes('-') && l.startsWith(c)) || 'en';
@@ -183,6 +205,7 @@
             tipPermHere: 'Ici votre accès ne dépend pas du roulage.',
             tipMax: (max, age) => 'Vous êtes dans une zone parcourue, mais le trajet qui l’a ouverte n’est pas dans l’historique connu (qui remonte à ' + age + ' jours) : il est plus ancien, ou pas encore chargé. Il reste au plus ' + max + ' jours.',
             pLoad: 'Charger l\'historique des trajets', pDisplay: 'Affichage',
+            sbHint: 'Combien de temps durent, ici, vos droits d’édition gagnés en roulant : le badge à côté du nom de la commune, les pastilles de « Vos trajets » et le calque des trajets.', sbHelp: 'Aide et détails', lnkDiscuss: 'Fil Discuss', sbSafe: 'Le script ne modifie jamais la carte.', majBtn: v => 'La version ' + v + ' est disponible', majInstall: 'Installer',
             pLayer: 'Dessiner les trajets, colorés par échéance',
             layerName: 'Trajets (Driving Areas)',
             scDesc: 'Afficher ou masquer les trajets',
@@ -245,6 +268,7 @@
             tipPermHere: 'Here your access does not depend on driving.',
             tipMax: (max, age) => 'You are inside a driven area, but the drive that opened it is not in the known history (which goes back ' + age + ' days): it is older, or not loaded yet. At most ' + max + ' days remain.',
             pLoad: 'Load drive history', pDisplay: 'Display',
+            sbHint: 'How long your editing rights earned by driving last, here: the badge next to the city name, the chips in "My drives" and the drives layer.', sbHelp: 'Help and details', lnkDiscuss: 'Discuss thread', sbSafe: 'The script never changes the map.', majBtn: v => 'Version ' + v + ' is available', majInstall: 'Install',
             pLayer: 'Draw drives, coloured by expiry',
             layerName: 'Drives (Driving Areas)',
             scDesc: 'Show or hide the drives',
@@ -307,6 +331,7 @@
             tipPermHere: 'Hier hängt Ihr Zugriff nicht vom Fahren ab.',
             tipMax: (max, age) => 'Sie befinden sich in einem befahrenen Bereich, doch die öffnende Fahrt ist nicht im bekannten Verlauf (der ' + age + ' Tage zurückreicht): sie ist älter oder noch nicht geladen. Es bleiben höchstens ' + max + ' Tage.',
             pLoad: 'Fahrtenverlauf laden', pDisplay: 'Anzeige',
+            sbHint: 'Wie lange Ihre durch Fahrten erworbenen Bearbeitungsrechte hier gelten: das Abzeichen neben dem Ortsnamen, die Plaketten unter „Meine Fahrten“ und die Fahrtenebene.', sbHelp: 'Hilfe und Details', lnkDiscuss: 'Discuss-Thread', sbSafe: 'Das Skript ändert die Karte nie.', majBtn: v => 'Version ' + v + ' ist verfügbar', majInstall: 'Installieren',
             pLayer: 'Fahrten zeichnen, nach Ablauf eingefärbt',
             layerName: 'Fahrten (Driving Areas)',
             scDesc: 'Fahrten ein- oder ausblenden',
@@ -369,6 +394,7 @@
             tipPermHere: 'Aquí su acceso no depende de la conducción.',
             tipMax: (max, age) => 'Está dentro de un área conducida, pero el viaje que la abrió no está en el historial conocido (que abarca ' + age + ' días): es más antiguo, o aún no se ha cargado. Quedan como mucho ' + max + ' días.',
             pLoad: 'Cargar el historial de viajes', pDisplay: 'Visualización',
+            sbHint: 'Cuánto duran aquí sus permisos de edición obtenidos conduciendo: la etiqueta junto al nombre de la localidad, las pastillas de «Mis viajes» y la capa de viajes.', sbHelp: 'Ayuda y detalles', lnkDiscuss: 'Hilo Discuss', sbSafe: 'El script nunca modifica el mapa.', majBtn: v => 'La versión ' + v + ' está disponible', majInstall: 'Instalar',
             pLayer: 'Dibujar los viajes, coloreados por vencimiento',
             layerName: 'Viajes (Driving Areas)',
             scDesc: 'Mostrar u ocultar los viajes',
@@ -431,6 +457,7 @@
             tipPermHere: 'Qui il tuo accesso non dipende dalla guida.',
             tipMax: (max, age) => 'Sei in un’area percorsa, ma il viaggio che l’ha aperta non è nello storico noto (che risale a ' + age + ' giorni): è più vecchio, o non ancora caricato. Restano al massimo ' + max + ' giorni.',
             pLoad: 'Carica lo storico dei viaggi', pDisplay: 'Visualizzazione',
+            sbHint: 'Quanto durano qui i permessi di modifica ottenuti guidando: il distintivo accanto al nome del comune, le etichette di «I miei viaggi» e il livello dei viaggi.', sbHelp: 'Aiuto e dettagli', lnkDiscuss: 'Discussione su Discuss', sbSafe: 'Lo script non modifica mai la mappa.', majBtn: v => 'La versione ' + v + ' è disponibile', majInstall: 'Installa',
             pLayer: 'Disegna i viaggi, colorati per scadenza',
             layerName: 'Viaggi (Driving Areas)',
             scDesc: 'Mostra o nascondi i viaggi',
@@ -493,6 +520,7 @@
             tipPermHere: 'Aqui seu acesso não depende de dirigir.',
             tipMax: (max, age) => 'Você está numa área percorrida, mas o trajeto que a abriu não está no histórico conhecido (que cobre ' + age + ' dias): é mais antigo, ou ainda não foi carregado. Restam no máximo ' + max + ' dias.',
             pLoad: 'Carregar o histórico de trajetos', pDisplay: 'Exibição',
+            sbHint: 'Quanto tempo duram aqui as suas permissões de edição obtidas dirigindo: o distintivo ao lado do nome do município, as etiquetas de «Meus trajetos» e a camada de trajetos.', sbHelp: 'Ajuda e detalhes', lnkDiscuss: 'Tópico Discuss', sbSafe: 'O script nunca altera o mapa.', majBtn: v => 'A versão ' + v + ' está disponível', majInstall: 'Instalar',
             pLayer: 'Desenhar os trajetos, coloridos por vencimento',
             layerName: 'Trajetos (Driving Areas)',
             scDesc: 'Mostrar ou ocultar os trajetos',
@@ -555,6 +583,7 @@
             tipPermHere: 'Aqui o seu acesso não depende de conduzir.',
             tipMax: (max, age) => 'Está numa área percorrida, mas o trajeto que a abriu não está no histórico conhecido (que cobre ' + age + ' dias): é mais antigo, ou ainda não foi carregado. Restam no máximo ' + max + ' dias.',
             pLoad: 'Carregar o histórico de trajetos', pDisplay: 'Visualização',
+            sbHint: 'Quanto tempo duram aqui as suas permissões de edição obtidas a conduzir: o distintivo junto ao nome do concelho, as etiquetas de «Os meus trajetos» e a camada de trajetos.', sbHelp: 'Ajuda e detalhes', lnkDiscuss: 'Tópico Discuss', sbSafe: 'O script nunca altera o mapa.', majBtn: v => 'A versão ' + v + ' está disponível', majInstall: 'Instalar',
             pLayer: 'Desenhar os trajetos, coloridos por prazo',
             layerName: 'Trajetos (Driving Areas)',
             scDesc: 'Mostrar ou ocultar os trajetos',
@@ -617,6 +646,7 @@
             tipPermHere: 'כאן הגישה שלכם אינה תלויה בנסיעה.',
             tipMax: (max, age) => 'אתם באזור נסיעה, אך הנסיעה שפתחה אותו אינה בהיסטוריה המוכרת (שמגיעה ' + (age === 1 ? 'יום אחד' : age + ' ימים') + ' אחורה): היא ישנה יותר, או שטרם נטענה. נותרו לכל היותר ' + (max === 1 ? 'יום אחד' : max + ' ימים') + '.',
             pLoad: 'טעינת היסטוריית הנסיעות', pDisplay: 'תצוגה',
+            sbHint: 'כמה זמן נמשכות כאן הרשאות העריכה שהושגו בנסיעה: התג ליד שם היישוב, התוויות ב„הנסיעות שלי” ושכבת הנסיעות.', sbHelp: 'עזרה ופרטים', lnkDiscuss: 'שרשור Discuss', sbSafe: 'הסקריפט לעולם אינו משנה את המפה.', majBtn: v => 'גרסה ' + v + ' זמינה', majInstall: 'התקנה',
             pLayer: 'ציור הנסיעות, צבועות לפי מועד הפקיעה',
             layerName: 'נסיעות (Driving Areas)',
             scDesc: 'הצגה או הסתרה של הנסיעות',
@@ -723,14 +753,15 @@
     const wmeEnv = () => {
         try {
             return (location.pathname.match(/^\/(\w+)-editor/) || [])[1]
-                || (window.W?.Config?.server?.baseUrl?.match(/\/(\w+)-Descartes/) || [])[1]
+                || (pw.W?.Config?.server?.baseUrl?.match(/\/(\w+)-Descartes/) || [])[1]
                 || 'row';
         } catch (e) { return 'row'; }
     };
     const api = chemin => '/' + wmeEnv() + '-Descartes/app/' + chemin;
 
     async function getJSON(url) {
-        const r = await fetch(url, { credentials: 'include' });
+        // fetch de la PAGE : même origine que WME, donc ses cookies de session.
+        const r = await (pw.fetch ? pw.fetch.bind(pw) : fetch)(url, { credentials: 'include' });
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();
     }
@@ -738,7 +769,7 @@
     // Le rayon est LU (editableMiles), jamais déduit du niveau : une table 1/2/3/4 miles codée
     // en dur est une borne qui se périme sans prévenir.
     function lireZones() {
-        const u = window.W?.loginManager?.user?.attributes || {};
+        const u = pw.W?.loginManager?.user?.attributes || {};
         const areas = u.areas || [];
         return {
             drive: areas.filter(a => a.type === 'drive').map(a => a.geometry),
@@ -807,7 +838,7 @@
     // qui n'étaient pas les siens, et ses traces sur le calque (audit du 25/09/2026). L'identifiant
     // est `W.loginManager.user.attributes.id`, un nombre (relevé dans WME le 25/09/2026).
     function proprietaire() {
-        const id = window.W?.loginManager?.user?.attributes?.id;
+        const id = pw.W?.loginManager?.user?.attributes?.id;
         return (id === undefined || id === null) ? null : id;
     }
 
@@ -1219,7 +1250,7 @@
             }],
             styleContext: { couleur: ctx => ctx.feature.properties.couleur, tirets: ctx => ctx.feature.properties.tirets }
         });
-        try { window.W.map.setLayerIndex(window.W.map.getLayersByName(LAYER)[0], 9999); } catch (e) { }
+        try { pw.W.map.setLayerIndex(pw.W.map.getLayersByName(LAYER)[0], 9999); } catch (e) { }
         calqueOk = true;
     }
 
@@ -1560,7 +1591,54 @@
     }
 
     // =====================================================================
-    //  Panneau (onglet Scripts)
+    //  Nouvelle version publiée — même mécanique que WCT et WRP
+    // =====================================================================
+
+    const VER_RE = /^\d+(\.\d+)*$/;
+    const MAJ_KEY = 'wda.maj.v1', MAJ_DELAI = 864e5;   // au plus une vérification par 24 h
+    let majEnLigne = null;
+    // Segment par segment, en nombres : en chaînes, « 0.9.00 » passerait pour plus récent que « 0.13.00 ».
+    const majCmp = (a, b) => {
+        const pa = String(a).split('.'), pb = String(b).split('.');
+        for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+            const x = Number(pa[i]) || 0, y = Number(pb[i]) || 0;
+            if (x !== y) return x < y ? -1 : 1;
+        }
+        return 0;
+    };
+    function majRendre() {
+        const e = paneEl && paneEl.querySelector('#wda-sb-maj');
+        if (e) { e.hidden = !majEnLigne; if (majEnLigne) e.querySelector('span').textContent = t('majBtn', majEnLigne); }
+    }
+    function verifierMaj() {
+        if (!VER_RE.test(VERSION) || typeof GM_xmlhttpRequest !== 'function') return;
+        let memo = null;
+        try { memo = JSON.parse(localStorage.getItem(MAJ_KEY) || 'null'); } catch (e) { }
+        if (memo && Date.now() - memo.t < MAJ_DELAI) {
+            if (memo.v && VER_RE.test(memo.v) && majCmp(VERSION, memo.v) < 0) { majEnLigne = memo.v; majRendre(); }
+            return;
+        }
+        const retenir = v => { try { localStorage.setItem(MAJ_KEY, JSON.stringify({ t: Date.now(), v })); } catch (e) { } };
+        GM_xmlhttpRequest({
+            method: 'GET', url: URL_MAJ, timeout: 10000, nocache: true,
+            onload: r => {
+                // onload vient AUSSI sur un 404 : la page d'erreur ne doit pas être lue comme un script.
+                if (r.status < 200 || r.status >= 300) { retenir(null); return; }
+                const m = (r.responseText || '').match(/^\/\/\s*@version\s+(\S+)/m);
+                retenir(m && VER_RE.test(m[1]) ? m[1] : null);
+                if (!m || !VER_RE.test(m[1]) || majCmp(VERSION, m[1]) >= 0) return;
+                majEnLigne = m[1];
+                majRendre();
+                log('nouvelle version publiée : ' + m[1] + ' (installée : ' + VERSION + ')');
+            },
+            onerror: () => { }, ontimeout: () => { },
+        });
+    }
+
+    // =====================================================================
+    //  Panneau (onglet Scripts) — la charte commune aux scripts de l'auteur (WCT, WJN, WRP) :
+    //  en-tête icône + nom + version, pastille de mise à jour, interrupteurs, sections en
+    //  capitales, explications REPLIABLES, liens et mention « ne modifie jamais la carte » au pied.
     // =====================================================================
 
     const CSS = `
@@ -1579,7 +1657,40 @@
    spécificité est identique. Le doute a donc sa propre marque, la couleur garde son sens. */
 #${BADGE_ID}.wda-approx{
   background-image:repeating-linear-gradient(135deg,rgba(0,0,0,.26) 0 4px,transparent 4px 8px)}
-.wda-pane{font-size:13px;line-height:1.45}
+/* Onglet Scripts — calqué sur #wct-sidebar et #wjn-sidebar (couleurs de la charte). */
+#wda-sidebar{padding:10px 12px;font-family:'Rubik','Open Sans',sans-serif;font-size:12px;line-height:1.45;color:#2d3748}
+#wda-sidebar h2{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#1565c0;margin:0 0 8px}
+#wda-sidebar h2 .wda-ver{font-size:11px;font-weight:400;color:#566372}
+#wda-sidebar .wda-sb-ico{display:inline-flex}
+#wda-sidebar :focus-visible{outline:2px solid #1565c0;outline-offset:1px}
+.wda-sb-hint{font-size:11px;color:#566372;line-height:1.6;margin:0 0 8px}
+.wda-sb-maj{margin:0 0 8px;padding:5px 8px;border-radius:8px;background:#ffebee;color:#c62828;font-size:11px;font-weight:600}
+.wda-sb-maj[hidden]{display:none}
+.wda-sb-maj a{color:#c62828}
+.wda-sb-sec{font-size:11px;font-weight:700;color:#1565c0;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 6px}
+.wda-toggle-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px}
+.wda-toggle-row>span{font-size:12px;font-weight:600}
+.wda-toggle{position:relative;width:36px;height:20px;flex-shrink:0;margin:0}
+.wda-toggle input{opacity:0;width:0;height:0}
+/* Rail éteint #8a94a0 : 3,08:1 sur blanc (WCAG 1.4.11) — même décision que WRP et WCT. */
+.wda-toggle-slider{position:absolute;cursor:pointer;inset:0;background:#8a94a0;border-radius:50px;transition:background .2s}
+.wda-toggle-slider:before{content:'';position:absolute;width:14px;height:14px;inset-inline-start:3px;bottom:3px;background:#fff;border-radius:50%;transition:transform .2s}
+.wda-toggle input:checked+.wda-toggle-slider{background:#1565c0}
+.wda-toggle input:checked+.wda-toggle-slider:before{transform:translateX(16px)}
+#wda-sidebar[dir="rtl"] .wda-toggle input:checked+.wda-toggle-slider:before{transform:translateX(-16px)}
+.wda-toggle input:focus-visible+.wda-toggle-slider{outline:2px solid #1565c0;outline-offset:2px}
+.wda-champ{display:flex;flex-direction:column;gap:3px;margin:10px 0 4px;font-weight:600}
+.wda-champ select{box-sizing:border-box;width:100%;max-width:100%;min-width:0;height:26px;padding:1px 4px;font:12px 'Rubik','Open Sans',sans-serif}
+.wda-help-section{border:1px solid #dde3ea;border-radius:8px;margin-bottom:4px;overflow:hidden}
+.wda-help-hdr{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%;margin:0;border:none;
+  font-family:inherit;text-align:start;padding:5px 9px;font-size:11px;font-weight:700;cursor:pointer;background:#f5f7f9;color:#2d3748}
+.wda-help-hdr.on{color:#1565c0;background:#e3f2fd}
+.wda-help-hdr:hover{background:#eef4fb}
+.wda-help-body{padding:7px 9px;font-size:11px;line-height:1.5}
+.wda-sb-links{margin-top:12px;padding-top:10px;border-top:1px solid #dde3ea;font-size:11px;color:#566372;text-align:center}
+.wda-sb-links a{color:#1565c0}
+.wda-sb-foot{margin:8px 0 0;font-size:11px;color:#566372;line-height:1.6;text-align:center}
+.wda-pane{font-size:12px;line-height:1.45}
 /* Légende : les couleurs des pastilles ne se devinent pas — un éditeur ④ a lu « 2 jours »
    là où le code dit 14. Les mêmes teintes que les pastilles de « Vos trajets ». */
 .wda-pane .wda-lg{display:flex;align-items:center;gap:8px;margin:3px 0;font-size:12px;color:#555}
@@ -1594,16 +1705,15 @@
 /* Après les teintes, jamais avant : « background » les remettrait à none. */
 .wda-pane .wda-sw.wda-approx{
   background-image:repeating-linear-gradient(135deg,rgba(0,0,0,.32) 0 4px,transparent 4px 8px)}
-.wda-pane h4{margin:10px 0 6px;font-size:13px;font-weight:600}
 .wda-pane .wda-btn{display:inline-block;padding:5px 12px;border-radius:6px;border:1px solid #1565c0;
   background:#1565c0;color:#fff;cursor:pointer;font-size:12px}
 .wda-pane .wda-btn[disabled]{opacity:.5;cursor:default}
 .wda-pane .wda-btn-sec{background:#fff;color:#1565c0;margin-top:6px}
 .wda-pane .wda-etat{margin:8px 0;padding:6px 8px;background:#f2f4f7;border-radius:6px;color:#333}
-.wda-pane .wda-note{color:#666;font-size:12px}
-.wda-pane .wda-alerte{color:#c62828;font-size:12px}
-.wda-pane label{display:block;margin:4px 0}
-.wda-pane select{width:100%;margin-top:4px;padding:3px}
+.wda-pane .wda-note{color:#566372;font-size:11px}
+.wda-pane #wda-prog{margin-top:4px}
+.wda-pane .wda-alerte{color:#c62828;font-size:11px}
+.wda-pane .wda-alerte>div{margin:4px 0}
 /* Bouton et échéance se posent en absolu dans wz-card, qui est déjà position:relative — la
    grille de WME n'est pas touchée. inset-inline-end suit le sens d'écriture : en hébreu, les
    deux passent d'eux-mêmes à gauche. */
@@ -1653,34 +1763,55 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
             + li('wda-approx', t('lgApprox'));
     }
 
+    // Sections repliables : ouvertes ou non, elles le restent d'une reconstruction à l'autre
+    // (changement de langue). Toutes fermées au départ : c'est le « blabla » qui mangeait le panneau.
+    const ouverts = new Set();
+    const SECTIONS = [
+        { id: 'legende', ico: '&#x1F3A8;', titre: () => t('pLegend'), corps: () => legendeHTML() },
+        { id: 'cache', ico: '&#x1F5C2;&#xFE0F;', titre: () => t('pCache'), corps: () =>
+            '<div id="wda-cache">…</div><button type="button" class="wda-btn wda-btn-sec" id="wda-effacer">' + t('pClear') + '</button>' },
+        { id: 'badge', ico: '&#x2753;', titre: () => t('pWhat'), corps: km => t('pWhatText', km, VALID_DAYS) },
+        { id: 'gpx', ico: '&#x2913;', titre: () => t('pGpx'), corps: () => t('pGpxText') },
+    ];
+    // Section repliée : la flèche pointe vers le texte qui suit — vers la gauche en hébreu.
+    const fleche = () => isRTL() ? '&#x25C0;' : '&#x25B6;';
+    const interrupteur = (id, libelle) => `
+  <div class="wda-toggle-row">
+    <span id="${id}-lib">${libelle}</span>
+    <label class="wda-toggle"><input type="checkbox" id="${id}" aria-labelledby="${id}-lib"><span class="wda-toggle-slider"></span></label>
+  </div>`;
+
     function buildPane() {
         const km = nombre(zones.miles * 1.609344, 3) + ' km (' + nombre(zones.miles, 2) + ' mi'
             + (zones.rayonLu === false ? ', ' + t('pRadiusGuess') : '') + ')';
-        return `<div class="wda-pane"${isRTL() ? ' dir="rtl"' : ''}>
-  <h4>${SCRIPT_NAME} <span class="wda-note">v${VERSION}</span></h4>
+        return `<div class="wda-pane" id="wda-sidebar" dir="${isRTL() ? 'rtl' : 'ltr'}">
+  <h2><span class="wda-sb-ico">${icone(18)}</span>${SCRIPT_NAME} <span class="wda-ver">v${VERSION}</span></h2>
+  <p class="wda-sb-maj" id="wda-sb-maj" hidden><span></span> <a href="#" id="wda-maj">${t('majInstall')}</a></p>
+  <p class="wda-sb-hint">${t('sbHint')}</p>
   <div class="wda-etat" id="wda-etat" role="status">…</div>
-  <button class="wda-btn" id="wda-load">${t('pLoad')}</button>
-  <div class="wda-note" id="wda-prog" role="status" style="margin-top:6px"></div>
-  <h4>${t('pDisplay')}</h4>
-  <label><input type="checkbox" id="wda-calque"> ${t('pLayer')}</label>
+  <div class="wda-alerte" id="wda-alertes"></div>
+  <button type="button" class="wda-btn" id="wda-load">${t('pLoad')}</button>
+  <div class="wda-note" id="wda-prog" role="status"></div>
+  <div class="wda-sb-sec">&#x1F4FA; ${t('pDisplay')}</div>
+  ${interrupteur('wda-calque', t('pLayer'))}
   <div class="wda-note" id="wda-sc"></div>
-  <label><input type="checkbox" id="wda-editeur"> ${t('pAsEditor')}</label>
-  <label>${t('pLang')}
+  ${interrupteur('wda-editeur', t('pAsEditor'))}
+  <label class="wda-champ"><span>${t('pLang')}</span>
     <select id="wda-lang">
       <option value="auto">${t('pLangAuto', (LANGS.find(x => x.code === detectLang()) || {}).label || 'English')}</option>
       ${LANGS.map(l => '<option value="' + l.code + '">' + l.label + '</option>').join('')}
     </select>
   </label>
-  <h4>${t('pLegend')}</h4>
-  ${legendeHTML()}
-  <h4>${t('pWhat')}</h4>
-  <div class="wda-note">${t('pWhatText', km, VALID_DAYS)}</div>
-  <h4>${t('pCache')}</h4>
-  <div class="wda-note" id="wda-cache">…</div>
-  <button class="wda-btn wda-btn-sec" id="wda-effacer">${t('pClear')}</button>
-  <h4>${t('pGpx')}</h4>
-  <div class="wda-note">${t('pGpxText')}</div>
-  <div class="wda-alerte" id="wda-gpx-etat"></div>
+  <div class="wda-sb-sec">&#x2139;&#xFE0F; ${t('sbHelp')}</div>
+  ${SECTIONS.map(x => {
+      const ouvert = ouverts.has(x.id);
+      return `<div class="wda-help-section">
+    <button type="button" class="wda-help-hdr${ouvert ? ' on' : ''}" data-aide="${x.id}" aria-expanded="${ouvert}">${x.ico} ${x.titre()} <span aria-hidden="true">${ouvert ? '&#x25BC;' : fleche()}</span></button>
+    <div class="wda-help-body" data-corps="${x.id}"${ouvert ? '' : ' hidden'}>${x.corps(km)}</div>
+  </div>`;
+  }).join('')}
+  <div class="wda-sb-links"><bdi>&#x1F4AC; <a href="${URL_DISCUSS}" target="_blank" rel="noopener">${t('lnkDiscuss')}</a></bdi> &nbsp;&#xB7;&nbsp; <bdi>&#x1F517; <a href="${URL_GF}" target="_blank" rel="noopener">GreasyFork</a></bdi> &nbsp;&#xB7;&nbsp; <bdi><a href="${URL_GH}" target="_blank" rel="noopener">GitHub</a></bdi></div>
+  <p class="wda-sb-foot">&#x1F512; ${t('sbSafe')}</p>
 </div>`;
     }
 
@@ -1703,9 +1834,7 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
                     dateCourte(recent), ageArchiveJours(), VALID_DAYS)
                     + (cache.at ? '<br>' + t('pCacheAt', dateHeure(cache.at)) : '')
                     + (vides ? '<br>' + t('pCacheEmpty', vides) : '')
-                    + '<br>' + t('pRetention', PURGE_DAYS)
-                    + (cache.tronque ? '<br><span class="wda-alerte">' + t('pCacheCut', cache.tronque) + '</span>' : '')
-                    + (cache.echecEcriture ? '<br><span class="wda-alerte">' + t('pCacheNotSaved') + '</span>' : '');
+                    + '<br>' + t('pRetention', PURGE_DAYS);
             }
         }
         const sc = $('wda-sc');
@@ -1713,8 +1842,11 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
 
         // Un bouton qui cesse d'apparaître doit se voir : sans cette ligne, une évolution de
         // WME casserait l'export en silence.
-        const g = $('wda-gpx-etat');
-        if (g) g.textContent = [gpxIndispo ? t('pGpxMissing', gpxIndispo) : '', erreurGpx].filter(Boolean).join(' ');
+        // Les alertes restent HORS des sections repliables : une perte ne doit pas se replier.
+        const g = $('wda-alertes');
+        if (g) g.innerHTML = [cache.tronque ? t('pCacheCut', cache.tronque) : '', cache.echecEcriture ? t('pCacheNotSaved') : '',
+            gpxIndispo ? t('pGpxMissing', gpxIndispo) : '', erreurGpx].filter(Boolean).map(x => '<div>' + x + '</div>').join('');
+        majRendre();
 
         const e = $('wda-etat');
         if (e) {
@@ -1755,6 +1887,17 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
 
     function connectPane() {
         const $ = id => paneEl.querySelector('#' + id);
+        paneEl.querySelectorAll('.wda-help-hdr').forEach(h => h.addEventListener('click', () => {
+            const id = h.dataset.aide, corps = paneEl.querySelector('[data-corps="' + id + '"]');
+            const ouvrir = corps.hidden;
+            corps.hidden = !ouvrir;
+            h.classList.toggle('on', ouvrir);
+            h.setAttribute('aria-expanded', String(ouvrir));
+            h.querySelector('span').innerHTML = ouvrir ? '&#x25BC;' : fleche();
+            if (ouvrir) ouverts.add(id); else ouverts.delete(id);
+            if (ouvrir && id === 'cache') majPanneau();
+        }));
+        $('wda-maj').addEventListener('click', ev => { ev.preventDefault(); window.open(URL_INSTALLER, '_blank', 'noopener'); });
         const btn = $('wda-load'), prog = $('wda-prog');
         btn.addEventListener('click', async () => {
             btn.disabled = true;
@@ -1813,10 +1956,10 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
     // =====================================================================
 
     const init = async () => {
-        if (window.__WDA_LOADED) return;
-        window.__WDA_LOADED = true;
+        if (pw.__WDA_LOADED) return;
+        pw.__WDA_LOADED = true;
 
-        sdk = window.getWmeSdk({ scriptId: SCRIPT_ID, scriptName: SCRIPT_NAME });
+        sdk = pw.getWmeSdk({ scriptId: SCRIPT_ID, scriptName: SCRIPT_NAME });
         cache = lireCache();
         opts = lireOpts();
         _lang = resolveLang();
@@ -1828,7 +1971,7 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
 
         try {
             const res = await sdk.Sidebar.registerScriptTab();
-            res.tabLabel.innerHTML = '<span title="' + SCRIPT_NAME + '" style="font-size:16px">&#x23F3;</span>';
+            res.tabLabel.innerHTML = '<span title="' + SCRIPT_NAME + '" style="display:inline-flex;vertical-align:middle">' + icone(20) + '</span>';
             paneEl = res.tabPane;
             paneEl.innerHTML = buildPane();
             await new Promise(r => setTimeout(r, 200));
@@ -1850,6 +1993,7 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
         recalculer(true);
         if (opts.calque && cache.drives.length) dessinerCalque();
         chargerSiVieux();
+        verifierMaj();
 
         // Le panneau « Vos trajets » se construit et se repagine sans qu'aucun événement du SDK
         // ne le signale. Un sondage d'une seconde coûte une querySelector et suffit ; il sort
@@ -1866,7 +2010,7 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
         log('v' + VERSION + ' prêt — langue ' + _lang + ', ' + cache.drives.length + ' trajets en cache, rayon ' + zones.miles + ' mi');
     };
 
-    if (window.W?.userscripts?.state?.isReady) init();
+    if (pw.W?.userscripts?.state?.isReady) init();
     else document.addEventListener('wme-ready', init, { once: true });
 
 })();

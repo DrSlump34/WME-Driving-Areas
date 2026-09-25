@@ -196,6 +196,11 @@ sur jaune et orange ; sur le calque, un trait par tranche en plus de la couleur 
 dans la langue du script ; un bouton pour effacer l'historique local ; les anciennes clés `wac.*`
 retirées.
 
+**L'onglet Scripts suit la charte des autres scripts** (WCT, WJN, WRP) : l'icône du script en tête
+et sur l'onglet, la pastille de nouvelle version (le script demande désormais `GM_xmlhttpRequest`
+et `update.greasyfork.org`), des interrupteurs, les explications **repliables**, et les liens
+Discuss · GreasyFork · GitHub au pied, avec la mention « ne modifie jamais la carte ».
+
 **Bancs** : ils tournent désormais sur le code servi, sans rien recopier, et un banc de calcul
 tient la règle « jamais plus de temps qu'il n'en reste » ; chaque contrôle a été vu échouer sur la
 0.06.00. Voir `bancs/README.md`.

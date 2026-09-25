@@ -44,7 +44,10 @@ const page = '<!doctype html><meta charset="utf-8"><title>WDA — banc de rendu<
     + badge('wda-bleu', 'accès permanent (zone gérée)') + ' '
     + badge('wda-jaune wda-approx', '≤ 31 j restants ici') + ' '
     + badge('wda-orange wda-approx', '≤ 20 j restants ici') + '</div>'
-    + ['fr', 'en', 'de', 'he'].map(rendu).join('');
+    + ['fr', 'en', 'de', 'he'].map(rendu).join('')
+    // Le panneau de l'onglet Scripts, tel que buildPane() le construit (état initial, sections repliées).
+    + ['fr', 'he'].map(lang => { W.regler({ lang, zones: { drive: [], managed: [], miles: 4, rayonLu: true, countries: [] } });
+        return '<section class="panneau"><h3>panneau ' + lang + '</h3>' + W.buildPane() + '</section>'; }).join('');
 
 fs.writeFileSync(OUT, page, 'utf8');
 console.log('écrit : ' + OUT + ' (' + page.length + ' caractères)');

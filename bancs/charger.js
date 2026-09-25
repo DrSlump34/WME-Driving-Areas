@@ -18,6 +18,7 @@ const EXPOSE = [
     'lireZones', 'DICO', 'CSS',
     // Ajoutées en 0.07.00 ; absentes d'une version plus ancienne, elles valent undefined.
     'restant', 'echeance', 'nCouleur', 'ARCHIVE_MIN_J', 'traceDe', 'chargerHistorique', 'proprietaire',
+    'buildPane',
 ];
 
 function charger(fichier, { stockage = {}, maintenant = null, window: fenetre = {}, fetch: reseau = null } = {}) {
