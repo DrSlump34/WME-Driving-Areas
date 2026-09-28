@@ -9,7 +9,7 @@
 // @name:he      WME Driving Areas
 // @icon         data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc2NCcgaGVpZ2h0PSc2NCcgdmlld0JveD0nMCAwIDY0IDY0Jz4gPHJlY3Qgd2lkdGg9JzY0JyBoZWlnaHQ9JzY0JyByeD0nMTInIGZpbGw9JyMxNTY1YzAnLz4gPHJlY3QgeD0nMTUnIHk9JzgnIHdpZHRoPSczNCcgaGVpZ2h0PSc2JyByeD0nMycgZmlsbD0nI2ZmZmZmZicvPiA8cmVjdCB4PScxNScgeT0nNTAnIHdpZHRoPSczNCcgaGVpZ2h0PSc2JyByeD0nMycgZmlsbD0nI2ZmZmZmZicvPiA8cGF0aCBkPSdNMTkgMTQgTDQ1IDE0IEwzNCAzMiBMNDUgNTAgTDE5IDUwIEwzMCAzMiBaJyBmaWxsPScjZmZmZmZmJy8+IDxwYXRoIGQ9J00yMyAxOCBMNDEgMTggTDMyIDMyIFonIGZpbGw9JyNmYjhjMDAnLz4gPHBhdGggZD0nTTMyIDQwIEw0MSA0NiBMMjMgNDYgWicgZmlsbD0nI2ZiOGMwMCcvPiA8cmVjdCB4PSczMScgeT0nMzAnIHdpZHRoPScyJyBoZWlnaHQ9JzEyJyBmaWxsPScjZmI4YzAwJy8+PC9zdmc+
 // @namespace    https://github.com/DrSlump34
-// @version      0.07.01
+// @version      0.07.02
 // @description  Shows how long your driving-based editing rights will last, next to the WME location label — rebuilt from your drive history. Adds a GPX export and a countdown to each drive.
 // @description:fr Affiche le temps restant sur vos droits d'édition obtenus en roulant, à côté du libellé de localisation de WME — reconstruit depuis l'historique des trajets. Ajoute un export GPX et un décompte à chaque trajet.
 // @description:de Zeigt neben der WME-Ortsanzeige, wie lange Ihre durch Fahrten erworbenen Bearbeitungsrechte noch gelten — rekonstruiert aus Ihrem Fahrtenverlauf. Mit GPX-Export und Countdown je Fahrt.
@@ -1061,7 +1061,9 @@
     // Le nombre de jours qui décide de la COULEUR : le dernier jour reste rouge (1), jamais gris.
     const nCouleur = r => r.etat === 'expire' ? 0 : Math.max(1, r.n);
 
-    function evaluer(lon, lat) {
+    // `pays` = getTopCountry(), lu AVANT l'appel : avec le SDK async il rend une promesse, et le
+    // calcul reste ainsi synchrone (et testable par les bancs).
+    function evaluer(lon, lat, pays = null) {
         if (!zones) zones = lireZones();
         const rayonM = zones.miles * 1609.344;
         const permZone = zones.managed.some(g => dansGeometrie(lon, lat, g));
@@ -1070,10 +1072,7 @@
             // getTopCountry() est RÉMANENT : il garde la dernière valeur connue et peut donc
             // mentir près d'une frontière. On s'en sert pour ADOUCIR un verdict, jamais pour
             // en durcir un.
-            try {
-                const c = sdk.DataModel.Countries.getTopCountry();
-                permPays = !!(c && zones.countries.indexOf(c.id) >= 0);
-            } catch (e) { }
+            permPays = !!(pays && zones.countries.indexOf(pays.id) >= 0);
         }
         const dansRoulage = zones.drive.some(g => dansGeometrie(lon, lat, g));
         let passage = cache.drives.length ? dernierPassage(lon, lat, rayonM) : null;
@@ -1199,20 +1198,26 @@
     //  Recalcul sur déplacement de carte
     // =====================================================================
 
-    function centreVue() {
+    async function centreVue() {
         // getMapExtent rend [minLon, minLat, maxLon, maxLat]. On calcule le centre plutôt que
         // de lire le libellé de WME : ce libellé ne désigne PAS le centre de la carte.
-        const e = sdk.Map.getMapExtent();
+        const e = await sdk.Map.getMapExtent();
         return [(e[0] + e[2]) / 2, (e[1] + e[3]) / 2];
     }
 
     let tRecalc = 0;
+    let generationRecalc = 0;
     function recalculer(immediat) {
         clearTimeout(tRecalc);
-        const faire = () => {
+        const faire = async () => {
+            // Avec le SDK async, un recalcul lancé plus tard peut finir plus tôt : seul le dernier écrit.
+            const generation = ++generationRecalc;
             try {
-                const [lon, lat] = centreVue();
-                dernierVerdict = evaluer(lon, lat);
+                const [lon, lat] = await centreVue();
+                let pays = null;
+                try { pays = await sdk.DataModel.Countries.getTopCountry(); } catch (e) { }
+                if (generation !== generationRecalc) return;
+                dernierVerdict = evaluer(lon, lat, pays);
                 rendreBadge();
                 majPanneau();
                 if (opts.calque) dessinerCalque();
@@ -1238,9 +1243,9 @@
         return seuilPour(t0).trace;
     }
 
-    function creerCalque() {
+    async function creerCalque() {
         if (calqueOk) return;
-        sdk.Map.addLayer({
+        await sdk.Map.addLayer({
             layerName: LAYER,
             styleRules: [{
                 style: {
@@ -1257,11 +1262,19 @@
         calqueOk = true;
     }
 
-    function dessinerCalque() {
+    // Les opérations sur le calque passent UNE PAR UNE : avec le SDK async, deux dessins
+    // entrelacés (vider, vider, ajouter, ajouter) laisseraient les traces en double.
+    let fileCalque = Promise.resolve();
+    function enFileCalque(travail) {
+        fileCalque = fileCalque.then(travail, travail);
+        return fileCalque;
+    }
+    function dessinerCalque() { return enFileCalque(dessinerCalqueMaintenant); }
+    async function dessinerCalqueMaintenant() {
         try {
-            creerCalque();
-            sdk.Map.removeAllFeaturesFromLayer({ layerName: LAYER });
-            const e = sdk.Map.getMapExtent();
+            await creerCalque();
+            await sdk.Map.removeAllFeaturesFromLayer({ layerName: LAYER });
+            const e = await sdk.Map.getMapExtent();
             const feats = [];
             for (const d of cache.drives) {
                 const bb = d.bb;
@@ -1276,12 +1289,14 @@
                     properties: { couleur: seuilPour(d.t).trace, tirets: seuilPour(d.t).tirets }
                 });
             }
-            if (feats.length) sdk.Map.addFeaturesToLayer({ layerName: LAYER, features: feats });
+            if (feats.length) await sdk.Map.addFeaturesToLayer({ layerName: LAYER, features: feats });
         } catch (err) { log('calque : ' + err.message); }
     }
 
     function effacerCalque() {
-        try { if (calqueOk) sdk.Map.removeAllFeaturesFromLayer({ layerName: LAYER }); } catch (e) { }
+        return enFileCalque(async () => {
+            try { if (calqueOk) await sdk.Map.removeAllFeaturesFromLayer({ layerName: LAYER }); } catch (e) { }
+        });
     }
 
     // =====================================================================
@@ -1303,7 +1318,7 @@
 
     // ⚠️ Trois interfaces pour un même état : si chacune écrit le sien, elles divergent sans
     // que rien ne le signale. Tout passe donc par ici.
-    function basculerCalque(actif) {
+    async function basculerCalque(actif) {
         opts.calque = !!actif;
         ecrireOpts();
         if (opts.calque) dessinerCalque(); else effacerCalque();
@@ -1311,8 +1326,8 @@
         if (cq && cq.checked !== opts.calque) cq.checked = opts.calque;
         if (caseCalqueNom) {
             try {
-                if (sdk.LayerSwitcher.isLayerCheckboxChecked({ name: caseCalqueNom }) !== opts.calque) {
-                    sdk.LayerSwitcher.setLayerCheckboxChecked({ name: caseCalqueNom, isChecked: opts.calque });
+                if (await sdk.LayerSwitcher.isLayerCheckboxChecked({ name: caseCalqueNom }) !== opts.calque) {
+                    await sdk.LayerSwitcher.setLayerCheckboxChecked({ name: caseCalqueNom, isChecked: opts.calque });
                 }
             } catch (e) { }
         }
@@ -1320,34 +1335,35 @@
 
     // L'événement se déclenche pour la case de N'IMPORTE quel calque : plutôt que de se fier à
     // une charge utile non documentée, on relit notre propre état et on se resynchronise.
-    function surCaseCalque() {
+    async function surCaseCalque() {
         if (!caseCalqueNom) return;
         let etat;
-        try { etat = sdk.LayerSwitcher.isLayerCheckboxChecked({ name: caseCalqueNom }); } catch (e) { return; }
+        try { etat = await sdk.LayerSwitcher.isLayerCheckboxChecked({ name: caseCalqueNom }); } catch (e) { return; }
         if (typeof etat === 'boolean' && etat !== opts.calque) basculerCalque(etat);
     }
 
-    function poserCommandesCalque() {
+    async function poserCommandesCalque() {
         // La case porte un nom traduit : au changement de langue il faut la retirer et la
         // reposer, sinon deux cases cohabitent sous deux libellés.
-        retirerCaseCalque();
+        await retirerCaseCalque();
         try {
             const nom = t('layerName');
-            sdk.LayerSwitcher.addLayerCheckbox({ name: nom });
+            await sdk.LayerSwitcher.addLayerCheckbox({ name: nom });
             caseCalqueNom = nom;
-            sdk.LayerSwitcher.setLayerCheckboxChecked({ name: nom, isChecked: opts.calque });
+            await sdk.LayerSwitcher.setLayerCheckboxChecked({ name: nom, isChecked: opts.calque });
         } catch (e) { caseCalqueNom = null; log('menu Calques : ' + e.message); }
     }
 
-    function retirerCaseCalque() {
+    async function retirerCaseCalque() {
         if (!caseCalqueNom) return;
-        try { sdk.LayerSwitcher.removeLayerCheckbox({ name: caseCalqueNom }); } catch (e) { }
+        const nom = caseCalqueNom;
         caseCalqueNom = null;
+        try { await sdk.LayerSwitcher.removeLayerCheckbox({ name: nom }); } catch (e) { }
     }
 
-    function poserRaccourci() {
+    async function poserRaccourci() {
         try {
-            sdk.Shortcuts.createShortcut({
+            await sdk.Shortcuts.createShortcut({
                 shortcutId: SC_ID,
                 shortcutKeys: SC_KEYS,
                 description: t('scDesc'),
@@ -1951,7 +1967,7 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
             rafraichirEcheances();
             // Le nom de la case du menu Calques est traduit : sans cette repose, l'ancien
             // libellé resterait et une seconde case apparaîtrait à la langue suivante.
-            poserCommandesCalque();
+            poserCommandesCalque().catch(e => log('menu Calques : ' + e.message));
             recalculer(true);
             // Le panneau vient d'être reconstruit : on rend le focus au sélecteur qu'on réglait.
             const nv = paneEl.querySelector('#wda-lang');
@@ -1967,7 +1983,7 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
         if (pw.__WDA_LOADED) return;
         pw.__WDA_LOADED = true;
 
-        sdk = pw.getWmeSdk({ scriptId: SCRIPT_ID, scriptName: SCRIPT_NAME });
+        sdk = pw.getWmeSdk({ scriptId: SCRIPT_ID, scriptName: SCRIPT_NAME, mode: 'async' });
         cache = lireCache();
         opts = lireOpts();
         _lang = resolveLang();
@@ -1993,8 +2009,8 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
 
         // Les deux commandes réclamées par OliveStChi : la case là où on cherche un calque,
         // et le raccourci pour ne pas avoir à ouvrir un panneau.
-        poserCommandesCalque();
-        poserRaccourci();
+        await poserCommandesCalque();
+        await poserRaccourci();
         try { sdk.Events.on({ eventName: 'wme-layer-checkbox-toggled', eventHandler: surCaseCalque }); }
         catch (e) { log('événement calque : ' + e.message); }
 
