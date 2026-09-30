@@ -14,7 +14,7 @@ const eq = (nom, obtenu, attendu) => {
 };
 
 console.log('--- couleurClasse, aux BORNES ---');
-[[91, 'wda-vert'], [61, 'wda-vert'], [60, 'wda-jaune'], [31, 'wda-jaune'],
+[[64, 'wda-vert'], [43, 'wda-vert'], [42, 'wda-jaune'], [31, 'wda-jaune'],
  [30, 'wda-orange'], [15, 'wda-orange'], [14, 'wda-rouge'], [1, 'wda-rouge'],
  [0, 'wda-gris'], [-7, 'wda-gris']].forEach(([n, c]) => eq('J' + n, W.couleurClasse(n), c));
 
@@ -26,7 +26,7 @@ console.log('--- legendeHTML : les intervalles DÉRIVENT de SEUILS ---');
 const lg = W.legendeHTML();
 const txt = lg.replace(/<[^>]+>/g, '|').replace(/\|+/g, '|');
 console.log('  ' + txt);
-for (const s of ['> 60', '31–60', '15–30', '1–14']) eq('contient « ' + s + ' »', txt.includes(s), true);
+for (const s of ['> 42', '31–42', '15–30', '1–14']) eq('contient « ' + s + ' »', txt.includes(s), true);
 eq('une ligne par entrée (8)', (lg.match(/class="wda-lg"/g) || []).length, 8);
 eq('la pastille hachurée est présente', lg.includes('wda-sw wda-approx'), true);
 

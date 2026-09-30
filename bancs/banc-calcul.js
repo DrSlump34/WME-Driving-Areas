@@ -48,12 +48,15 @@ const pastille = (d, z = zones()) => {
     return carte.children[0] || {};
 };
 
-console.log('--- 0. La durée du droit est celle du Wazeopedia ---');
-chk('VALID_DAYS = 90 (témoin : une durée portée à 120 doit faire échouer ce banc)', W.VALID_DAYS === 90, W.VALID_DAYS);
+console.log('--- 0. La durée du droit est celle de Waze depuis novembre 2025 : 63 jours ---');
+// Jusqu'à la 0.07.04 ce banc exigeait 90 : il VALIDAIT la règle périmée du Wazeopedia. Un banc ne vaut
+// que ce que vaut sa source (annonce staff 391372, notification WME du 02/11/2025).
+chk('VALID_DAYS = 63 (témoin : 90 doit faire échouer ce banc)', W.VALID_DAYS === 63, W.VALID_DAYS);
 
 console.log('--- 1. Moins d\'un jour restant : ni « 1 j », ni « expiré » ---');
 {
-    const d = trajet('neufh', MAINTENANT - 90 * J + 9 * H, 1);
+    // Le cas de SpeedyRom1 : trajet du 31/07 à 10 h ⇒ fin le 02/10 à minuit ; le 01/10 à midi, 12 h.
+    const d = trajet('neufh', new Date(2026, 6, 31, 10, 0).getTime(), 1);
     const { b } = verdict([d]);
     chk('le badge ne dit pas « ~1 j »', !/~1 j/.test(b.txt), b.txt);
     chk('le badge dit « < 1 j »', /< ?1\s?j/.test(b.txt), b.txt);
@@ -66,7 +69,8 @@ console.log('--- 1. Moins d\'un jour restant : ni « 1 j », ni « expiré » --
 
 console.log('--- 2. 14,2 jours restants : 14, rouge — jamais 15, orange ---');
 {
-    const d = trajet('quatorze', MAINTENANT - (90 - 14.2) * J, 1);
+    // Trajet du 14/08 ⇒ fin le 16/10 à minuit : 14,5 j le 01/10 à midi.
+    const d = trajet('quatorze', new Date(2026, 7, 14, 10, 0).getTime(), 1);
     const { b } = verdict([d]);
     chk('le badge dit 14 j', /~14 j/.test(b.txt), b.txt);
     chk('le badge est rouge', /wda-rouge/.test(b.cls), b.cls);
@@ -75,9 +79,10 @@ console.log('--- 2. 14,2 jours restants : 14, rouge — jamais 15, orange ---');
     chk('le calque la peint en rouge', W.couleurPour(d.t) === '#e53935', W.couleurPour(d.t));
 }
 
-console.log('--- 3. Un droit expiré depuis 5,3 jours ---');
+console.log('--- 3. Un droit expiré depuis 5,5 jours ---');
 {
-    const d = trajet('expire', MAINTENANT - (90 + 5.3) * J, 1);
+    // Trajet du 25/07 ⇒ fin le 26/09 à minuit : expiré depuis 5,5 j.
+    const d = trajet('expire', new Date(2026, 6, 25, 10, 0).getTime(), 1);
     const e = pastille(d);
     chk('la pastille dit J+5', e.textContent === 'J+5', e.textContent);
     chk('la pastille est grise', /wda-gris/.test(e.className), e.className);
@@ -87,8 +92,8 @@ console.log('--- 3. Un droit expiré depuis 5,3 jours ---');
 
 console.log('--- 4. Recherche élargie : une BORNE HAUTE, hachurée, jamais une estimation pleine ---');
 {
-    // A : il y a 85 j à 7 km ; B : il y a 5 j à 15 km. Rayon nominal 6,437 km : aucun ; élargi : les deux.
-    const A = trajet('A', MAINTENANT - 85 * J, 7), B = trajet('B', MAINTENANT - 5 * J, 15);
+    // A : il y a 50 j à 7 km ; B : il y a 5 j à 15 km. Rayon nominal 6,437 km : aucun ; élargi : les deux.
+    const A = trajet('A', MAINTENANT - 50 * J, 7), B = trajet('B', MAINTENANT - 5 * J, 15);
     const { v, b } = verdict([A, B]);
     chk('le calcul passe bien par la recherche élargie', v.elargi === true, JSON.stringify({ elargi: v.elargi }));
     chk('le badge est une borne « ≤ »', /^≤/.test(b.txt), b.txt);
@@ -100,19 +105,21 @@ console.log('--- 5. Borne « ≤ N j » avec un cache jeune : l\'archive remonte
     // Point dans la zone de roulage, aucun trajet proche ; le plus vieux trajet en cache a 20 j.
     const loin = trajet('loin', MAINTENANT - 20 * J, 300);
     const { b } = verdict([loin]);
-    chk('borne resserrée à ≤ 31 j (90 − 59), et non 70', /≤ 31 j/.test(b.txt), b.txt);
+    chk('borne resserrée à ≤ 4 j (63 − 59), et non 43', /≤ 4 j/.test(b.txt), b.txt);
     chk('toujours hachurée', /wda-approx/.test(b.cls), b.cls);
 }
 
-console.log('--- 6. Changement d\'heure : la date de fin n\'est jamais repoussée ---');
+console.log('--- 6. Date UTC et changement d\'heure : la date de fin n\'est jamais repoussée ---');
 {
-    const t0 = new Date(2026, 0, 1, 23, 30).getTime();        // 01/01 23:30, heure d'hiver
-    W.regler({ cache: { at: MAINTENANT, drives: [trajet('dst', t0, 1)] }, zones: zones() });
-    const W2 = charger(FICHIER, { maintenant: new Date(2026, 1, 1, 12, 0).getTime() });
+    // 02/02 00:30 à Paris = 01/02 23:30 UTC : daté du 01/02 en UTC. Le 63e jour après le 01/02 est le
+    // 05/04 ; minuit UTC du 05/04 = 02:00 à Paris (heure d'été, le changement tombe le 29/03).
+    // Les autres lectures donnent plus tard (06/04 00:00 locale, 06/04 00:30 ou 01:30).
+    const t0 = new Date(2026, 1, 2, 0, 30).getTime();
+    const W2 = charger(FICHIER, { maintenant: new Date(2026, 2, 1, 12, 0).getTime() });
     W2.regler({ sdk: SDK, lang: 'fr', cache: { at: 0, drives: [trajet('dst', t0, 1)] }, zones: zones() });
     const v = W2.evaluer(P[0], P[1]);
-    const attendu = new Date(2026, 3, 1, 23, 30).getTime();  // 90 jours de calendrier : 01/04 23:30
-    chk('échéance = 01/04 23:30 (la plus précoce), pas 02/04 00:30', v.expireLe === attendu,
+    const attendu = new Date(2026, 3, 5, 2, 0).getTime();
+    chk('échéance = 05/04 02:00 (minuit UTC, la plus précoce), pas le 06/04', v.expireLe === attendu,
         new Date(v.expireLe).toString());
 }
 

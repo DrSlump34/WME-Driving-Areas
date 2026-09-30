@@ -9,7 +9,7 @@
 // @name:he      WME Driving Areas
 // @icon         data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc2NCcgaGVpZ2h0PSc2NCcgdmlld0JveD0nMCAwIDY0IDY0Jz4gPHJlY3Qgd2lkdGg9JzY0JyBoZWlnaHQ9JzY0JyByeD0nMTInIGZpbGw9JyMxNTY1YzAnLz4gPHJlY3QgeD0nMTUnIHk9JzgnIHdpZHRoPSczNCcgaGVpZ2h0PSc2JyByeD0nMycgZmlsbD0nI2ZmZmZmZicvPiA8cmVjdCB4PScxNScgeT0nNTAnIHdpZHRoPSczNCcgaGVpZ2h0PSc2JyByeD0nMycgZmlsbD0nI2ZmZmZmZicvPiA8cGF0aCBkPSdNMTkgMTQgTDQ1IDE0IEwzNCAzMiBMNDUgNTAgTDE5IDUwIEwzMCAzMiBaJyBmaWxsPScjZmZmZmZmJy8+IDxwYXRoIGQ9J00yMyAxOCBMNDEgMTggTDMyIDMyIFonIGZpbGw9JyNmYjhjMDAnLz4gPHBhdGggZD0nTTMyIDQwIEw0MSA0NiBMMjMgNDYgWicgZmlsbD0nI2ZiOGMwMCcvPiA8cmVjdCB4PSczMScgeT0nMzAnIHdpZHRoPScyJyBoZWlnaHQ9JzEyJyBmaWxsPScjZmI4YzAwJy8+PC9zdmc+
 // @namespace    https://github.com/DrSlump34
-// @version      0.07.04
+// @version      0.08.00
 // @description  Shows how long your driving-based editing rights will last, next to the WME location label — rebuilt from your drive history. Adds a GPX export and a countdown to each drive.
 // @description:fr Affiche le temps restant sur vos droits d'édition obtenus en roulant, à côté du libellé de localisation de WME — reconstruit depuis l'historique des trajets. Ajoute un export GPX et un décompte à chaque trajet.
 // @description:de Zeigt neben der WME-Ortsanzeige, wie lange Ihre durch Fahrten erworbenen Bearbeitungsrechte noch gelten — rekonstruiert aus Ihrem Fahrtenverlauf. Mit GPX-Export und Countdown je Fahrt.
@@ -51,14 +51,13 @@
  *  Et le rayon du droit est donné par WME lui-même : user.editableMiles (4 → 6,437 km).
  *
  *  D'où le calcul : dernier passage à moins de editableMiles du point regardé, + la durée de
- *  validité (90 jours d'après le Wazeopedia) = date de retrait.
+ *  validité (63 jours depuis novembre 2025, voir VALID_DAYS) = date de retrait.
  *
- *  LA LIMITE, ET ELLE EST STRUCTURELLE : l'archive des trajets est plus COURTE que le droit.
- *  Mesurée à 63 jours pour 90 jours de validité. Les secteurs dont le dernier passage est
- *  antérieur à l'archive sont donc datables « au plus tard », pas au jour près. Le trou se
- *  comble avec le temps : le cache local garde les trajets une fois vus, et se recharge de
- *  lui-même au-delà de 12 h (depuis la 0.07.00 ; avant, sans un clic tous les ~60 jours, des
- *  trajets sortaient de l'archive avant d'avoir été gardés).
+ *  L'archive des trajets (63 jours mesurés) couvre donc EXACTEMENT le droit : c'est la même
+ *  rétention, décidée par Waze en 2025. La 0.07.04 et les précédentes croyaient le droit plus long
+ *  (90 jours) et parlaient d'une archive « plus courte que le droit » : c'était la règle qui était
+ *  périmée. Le cache local garde les trajets une fois vus et se recharge de lui-même au-delà de 12 h ;
+ *  un trajet qui en sort n'ouvre de toute façon plus de droit.
  *
  *  Né d'une question d'OliveStChi (Discord Waze France, 29/08/2026).
  */
@@ -92,7 +91,16 @@
     const icone = px => ICONE.replace('<svg ', '<svg width="' + px + '" height="' + px + '" ');
 
     // ---------- Réglages ----------
-    const VALID_DAYS = 90;          // durée du droit obtenu en roulant (Wazeopedia « Editable area »)
+    // Durée du droit obtenu en roulant : 63 JOURS depuis novembre 2025, et non plus 90.
+    // Annonce du staff du 25/09/2025 (Discuss 391372, catégorie des Coordinators) : « Editing areas
+    // based on drives will be calculated from the last 63 days only » ; notification WME du 02/11/2025 :
+    // « your editing areas based on drives will expire on the 63rd day » ; wiki américain : « expires
+    // 63 days after the date of the drive ». Le staff prévenait qu'elle pourrait descendre à 40 jours :
+    // c'est la seule valeur à changer ici, tout le reste en découle (couleurs comprises).
+    // 🔴 Jusqu'à la 0.07.04, le script comptait 90 jours d'après une page du Wazeopedia restée périmée,
+    // alors que la mesure (archive de 63 jours, 29/08/2026) disait déjà le contraire : il annonçait
+    // 27 jours de trop. Signalé par logan_zer ④ et SpeedyRom1 ④ le 30/09/2026.
+    const VALID_DAYS = 63;
     const DEFAULT_MILES = 4;        // repli si user.editableMiles manque
     const DECIM_M = 400;            // décimation des traces : un point tous les ~400 m
     const PURGE_DAYS = 130;         // au-delà, un trajet ne peut plus donner de droit : on le jette
@@ -121,11 +129,15 @@
     // `tirets` : sur le calque, la couleur ne porte pas SEULE le délai (WCAG 1.4.1) — le rouge et
     // le vert se confondent pour un éditeur daltonien. Plus l'échéance approche, plus le trait se
     // hache ; la légende montre le même trait.
+    // Rouge et orange disent une URGENCE en jours (prévoir un trajet) : ils restent fixes. Le vert
+    // commence aux deux tiers de la durée du droit — 60 sur 90 jusqu'à la 0.07.04, 42 sur 63 — pour
+    // qu'un trajet récent soit vert quelle que soit la règle de Waze ; jamais sous 31 j, sinon les
+    // tranches se chevaucheraient (40 jours annoncés comme possibles).
     const SEUILS = [
         { max: 0, cls: 'wda-gris', trace: '#9e9e9e', tirets: 'dot' },
         { max: 14, cls: 'wda-rouge', trace: '#e53935', tirets: 'dot' },
         { max: 30, cls: 'wda-orange', trace: '#fb8c00', tirets: 'dash' },
-        { max: 60, cls: 'wda-jaune', trace: '#fdd835', tirets: 'longdash' },
+        { max: Math.max(31, Math.round(VALID_DAYS * 2 / 3)), cls: 'wda-jaune', trace: '#fdd835', tirets: 'longdash' },
         { max: Infinity, cls: 'wda-vert', trace: '#43a047', tirets: 'solid' },
     ];
     // Le même trait en SVG pour la légende (les motifs d'OpenLayers, approchés).
@@ -204,7 +216,7 @@
             tipLast: (d, n, km) => 'Dernier passage connu : le ' + d + ' (il y a ' + n + ' j, à ' + km + ' km).',
             tipWide: km => '⚠️ Ce trajet est au-delà du rayon annoncé par WME (' + km + ' km) : il est retenu parce que le polygone de Waze vous place bien dans une zone parcourue, mais rien ne prouve que ce soit lui qui l\'ait ouverte. Celui qui l’a ouverte peut être plus ancien : la date affichée est un maximum.',
             tipRadiusGuess: m => '⚠️ WME n’a pas donné le rayon de vos droits : ' + m + ' mi supposés. Si le vôtre est plus petit, il vous reste moins de temps qu’affiché.',
-            tipRule: n => 'Durée retenue : ' + n + ' jours après le trajet (règle du Wazeopedia), qui ajoute « ou le dernier jour du mois, selon ce qui est le plus tardif » : si cet arrondi existe, la date réelle est postérieure à celle annoncée. Le calcul porte sur le CENTRE de la vue.',
+            tipRule: n => 'Durée retenue : ' + n + ' jours après la date du trajet (règle de Waze depuis novembre 2025 ; elle était de 90 jours). L’échéance est prise au plus tôt : minuit du dernier jour. Le calcul porte sur le CENTRE de la vue.',
             tipRetreat: d => 'Retrait estimé le ' + d + '.',
             tipPermHere: 'Ici votre accès ne dépend pas du roulage.',
             tipMax: (max, age) => 'Vous êtes dans une zone parcourue, mais le trajet qui l’a ouverte n’est pas dans l’historique connu (qui remonte à ' + age + ' jours) : il est plus ancien, ou pas encore chargé. Il reste au plus ' + max + ' jours.',
@@ -218,7 +230,7 @@
             pAsEditor: 'Ignorer mes zones gérées (voir ce que verrait un éditeur sans droits)',
             pWhat: 'Ce que dit le badge',
             pRadiusGuess: 'supposé',
-            pWhatText: (km, d) => 'Le décompte part du <b>dernier passage</b> à moins de ' + km + ' du centre de la vue, plus ' + d + ' jours. Cette durée vient du Wazeopedia, qui ajoute « ou le dernier jour du mois, selon ce qui est le plus tardif » : <b>~N j</b> ne surestime donc jamais votre temps restant.<br><br>Ce qui est <b>hachuré</b> est une borne haute (<b>≤ N j</b>) : le trajet qui a ouvert la zone est plus ancien que l’historique disponible, ou n’a été trouvé qu’au-delà du rayon annoncé par WME, ou ce rayon a dû être supposé. La date exacte est inconnue, mais elle n’est pas plus tardive que celle affichée.',
+            pWhatText: (km, d) => 'Le décompte part du <b>dernier passage</b> à moins de ' + km + ' du centre de la vue, plus ' + d + ' jours : c’est la durée fixée par Waze depuis novembre 2025 (elle était de 90 jours). L’échéance est prise à minuit et le décompte s’arrondit vers le bas : <b>~N j</b> ne surestime donc jamais votre temps restant.<br><br>Ce qui est <b>hachuré</b> est une borne haute (<b>≤ N j</b>) : le trajet qui a ouvert la zone est plus ancien que l’historique disponible, ou n’a été trouvé qu’au-delà du rayon annoncé par WME, ou ce rayon a dû être supposé. La date exacte est inconnue, mais elle n’est pas plus tardive que celle affichée.',
             pCache: 'Historique en cache', pCacheNone: 'Aucun trajet en cache.',
             pCacheInfo: (n, a, b, age, v) => n + ' trajets, du ' + a + ' au ' + b + ' — soit ' + age + ' jours de couverture sur les ' + v + ' de validité.',
             pCacheEmpty: n => 'Dont ' + n + ' sans trace GPS (aucune route appariée par Waze) : ils n\'ouvrent aucun droit et ne comptent pas dans le calcul.',
@@ -268,7 +280,7 @@
             tipLast: (d, n, km) => 'Last known drive: ' + d + ' (' + n + ' d ago, ' + km + ' km away).',
             tipWide: km => '⚠️ This drive is beyond the radius WME reports (' + km + ' km). It is used because Waze\'s own polygon does place you inside a driven area, but nothing proves this drive is the one that opened it. The drive that did may be older: the date shown is a maximum.',
             tipRadiusGuess: m => '⚠️ WME did not provide the radius of your rights: ' + m + ' mi assumed. If yours is smaller, you have less time left than shown.',
-            tipRule: n => 'Assumed duration: ' + n + ' days after the drive (Wazeopedia rule), which adds "or the last day of the month, whichever is later": if that rounding applies, the real date is later than shown. The estimate applies to the map CENTRE.',
+            tipRule: n => 'Assumed duration: ' + n + ' days after the date of the drive (Waze rule since November 2025; it used to be 90 days). The expiry is taken at the earliest: midnight of the last day. The estimate applies to the map CENTRE.',
             tipRetreat: d => 'Estimated removal on ' + d + '.',
             tipPermHere: 'Here your access does not depend on driving.',
             tipMax: (max, age) => 'You are inside a driven area, but the drive that opened it is not in the known history (which goes back ' + age + ' days): it is older, or not loaded yet. At most ' + max + ' days remain.',
@@ -282,7 +294,7 @@
             pAsEditor: 'Ignore my managed areas (see what an editor without rights would see)',
             pWhat: 'What the badge means',
             pRadiusGuess: 'assumed',
-            pWhatText: (km, d) => 'The countdown starts from the <b>last drive</b> within ' + km + ' of the map centre, plus ' + d + ' days. That duration comes from Wazeopedia, which adds "or the last day of the month, whichever is later": <b>~N d</b> therefore never overstates your remaining time.<br><br>Anything <b>hatched</b> is an upper bound (<b>≤ N d</b>): the drive that opened the area is older than the available history, or was only found beyond the radius WME reports, or that radius had to be assumed. The exact date is unknown, but it is no later than the one shown.',
+            pWhatText: (km, d) => 'The countdown starts from the <b>last drive</b> within ' + km + ' of the map centre, plus ' + d + ' days: the duration Waze has applied since November 2025 (it used to be 90 days). The expiry is taken at midnight and the countdown rounds down: <b>~N d</b> therefore never overstates your remaining time.<br><br>Anything <b>hatched</b> is an upper bound (<b>≤ N d</b>): the drive that opened the area is older than the available history, or was only found beyond the radius WME reports, or that radius had to be assumed. The exact date is unknown, but it is no later than the one shown.',
             pCache: 'Cached history', pCacheNone: 'No drives cached.',
             pCacheInfo: (n, a, b, age, v) => n + ' drives, from ' + a + ' to ' + b + ' — ' + age + ' days of coverage out of the ' + v + ' of validity.',
             pCacheEmpty: n => 'Including ' + n + ' with no GPS trace (no road matched by Waze): they grant no rights and are left out of the estimate.',
@@ -332,7 +344,7 @@
             tipLast: (d, n, km) => 'Letzte bekannte Fahrt: ' + d + ' (vor ' + n + ' T, ' + km + ' km entfernt).',
             tipWide: km => '⚠️ Diese Fahrt liegt außerhalb des von WME genannten Radius (' + km + ' km). Sie wird verwendet, weil das Polygon von Waze Sie tatsächlich in einem befahrenen Bereich verortet — dass gerade diese Fahrt ihn geöffnet hat, ist aber nicht belegt. Die öffnende Fahrt kann älter sein: das angezeigte Datum ist ein Höchstwert.',
             tipRadiusGuess: m => '⚠️ WME hat den Radius Ihrer Rechte nicht geliefert: ' + m + ' mi angenommen. Ist Ihrer kleiner, bleibt Ihnen weniger Zeit als angezeigt.',
-            tipRule: n => 'Angenommene Dauer: ' + n + ' Tage nach der Fahrt (Wazeopedia-Regel), ergänzt um „oder der letzte Tag des Monats, je nachdem, was später ist“: gilt diese Rundung, liegt das echte Datum später. Die Berechnung gilt für die KARTENMITTE.',
+            tipRule: n => 'Angenommene Dauer: ' + n + ' Tage nach dem Datum der Fahrt (Regel von Waze seit November 2025; zuvor 90 Tage). Das Ende wird so früh wie möglich angesetzt: Mitternacht des letzten Tages. Die Berechnung gilt für die KARTENMITTE.',
             tipRetreat: d => 'Voraussichtlicher Entzug am ' + d + '.',
             tipPermHere: 'Hier hängt Ihr Zugriff nicht vom Fahren ab.',
             tipMax: (max, age) => 'Sie befinden sich in einem befahrenen Bereich, doch die öffnende Fahrt ist nicht im bekannten Verlauf (der ' + age + ' Tage zurückreicht): sie ist älter oder noch nicht geladen. Es bleiben höchstens ' + max + ' Tage.',
@@ -346,7 +358,7 @@
             pAsEditor: 'Meine verwalteten Bereiche ignorieren (Sicht eines Bearbeiters ohne Rechte)',
             pWhat: 'Was das Abzeichen bedeutet',
             pRadiusGuess: 'angenommen',
-            pWhatText: (km, d) => 'Die Frist beginnt mit der <b>letzten Fahrt</b> innerhalb von ' + km + ' um die Kartenmitte, plus ' + d + ' Tage. Diese Dauer stammt aus dem Wazeopedia, das „oder der letzte Tag des Monats, je nachdem, was später ist“ ergänzt: <b>~N T</b> überschätzt Ihre Restzeit also nie.<br><br><b>Schraffiertes</b> ist eine Obergrenze (<b>≤ N T</b>): die öffnende Fahrt ist älter als der verfügbare Verlauf, wurde nur außerhalb des von WME genannten Radius gefunden, oder dieser Radius musste angenommen werden. Das genaue Datum ist unbekannt, liegt aber nicht später als das angezeigte.',
+            pWhatText: (km, d) => 'Die Frist beginnt mit der <b>letzten Fahrt</b> innerhalb von ' + km + ' um die Kartenmitte, plus ' + d + ' Tage: die Dauer, die Waze seit November 2025 anwendet (zuvor 90 Tage). Das Ende wird auf Mitternacht gelegt und die Anzeige abgerundet: <b>~N T</b> überschätzt Ihre Restzeit also nie.<br><br><b>Schraffiertes</b> ist eine Obergrenze (<b>≤ N T</b>): die öffnende Fahrt ist älter als der verfügbare Verlauf, wurde nur außerhalb des von WME genannten Radius gefunden, oder dieser Radius musste angenommen werden. Das genaue Datum ist unbekannt, liegt aber nicht später als das angezeigte.',
             pCache: 'Zwischengespeicherter Verlauf', pCacheNone: 'Keine Fahrten gespeichert.',
             pCacheInfo: (n, a, b, age, v) => n + ' Fahrten, vom ' + a + ' bis ' + b + ' — also ' + age + ' Tage Abdeckung von den ' + v + ' Tagen Gültigkeit.',
             pCacheEmpty: n => 'Davon ' + n + ' ohne GPS-Spur (keine Straße von Waze zugeordnet): sie gewähren keine Rechte und zählen nicht.',
@@ -396,7 +408,7 @@
             tipLast: (d, n, km) => 'Último viaje conocido: el ' + d + ' (hace ' + n + ' d, a ' + km + ' km).',
             tipWide: km => '⚠️ Este viaje está más allá del radio que indica WME (' + km + ' km). Se usa porque el polígono de Waze sí lo sitúa dentro de un área conducida, pero nada prueba que fuera este viaje el que la abrió. El que la abrió puede ser más antiguo: la fecha mostrada es un máximo.',
             tipRadiusGuess: m => '⚠️ WME no ha dado el radio de sus permisos: se suponen ' + m + ' mi. Si el suyo es menor, le queda menos tiempo del indicado.',
-            tipRule: n => 'Duración asumida: ' + n + ' días tras el viaje (regla del Wazeopedia), que añade «o el último día del mes, lo que sea más tarde»: si ese redondeo existe, la fecha real es posterior a la mostrada. El cálculo se refiere al CENTRO del mapa.',
+            tipRule: n => 'Duración asumida: ' + n + ' días tras la fecha del viaje (regla de Waze desde noviembre de 2025; antes eran 90 días). El vencimiento se toma lo antes posible: la medianoche del último día. El cálculo se refiere al CENTRO del mapa.',
             tipRetreat: d => 'Retirada estimada el ' + d + '.',
             tipPermHere: 'Aquí su acceso no depende de la conducción.',
             tipMax: (max, age) => 'Está dentro de un área conducida, pero el viaje que la abrió no está en el historial conocido (que abarca ' + age + ' días): es más antiguo, o aún no se ha cargado. Quedan como mucho ' + max + ' días.',
@@ -410,7 +422,7 @@
             pAsEditor: 'Ignorar mis áreas gestionadas (ver lo que vería un editor sin permisos)',
             pWhat: 'Qué indica la etiqueta',
             pRadiusGuess: 'supuesto',
-            pWhatText: (km, d) => 'La cuenta atrás parte del <b>último viaje</b> a menos de ' + km + ' del centro del mapa, más ' + d + ' días. Esa duración viene del Wazeopedia, que añade «o el último día del mes, lo que sea más tarde»: <b>~N d</b> nunca sobrestima el tiempo restante.<br><br>Lo <b>rayado</b> es un límite superior (<b>≤ N d</b>): el viaje que abrió el área es anterior al historial disponible, o solo se encontró más allá del radio que indica WME, o ese radio tuvo que suponerse. La fecha exacta es desconocida, pero no es posterior a la mostrada.',
+            pWhatText: (km, d) => 'La cuenta atrás parte del <b>último viaje</b> a menos de ' + km + ' del centro del mapa, más ' + d + ' días: la duración que aplica Waze desde noviembre de 2025 (antes eran 90 días). El vencimiento se fija a medianoche y la cuenta se redondea a la baja: <b>~N d</b> nunca sobrestima el tiempo restante.<br><br>Lo <b>rayado</b> es un límite superior (<b>≤ N d</b>): el viaje que abrió el área es anterior al historial disponible, o solo se encontró más allá del radio que indica WME, o ese radio tuvo que suponerse. La fecha exacta es desconocida, pero no es posterior a la mostrada.',
             pCache: 'Historial en caché', pCacheNone: 'Ningún viaje en caché.',
             pCacheInfo: (n, a, b, age, v) => n + ' viajes, del ' + a + ' al ' + b + ' — es decir ' + age + ' días de cobertura sobre los ' + v + ' de validez.',
             pCacheEmpty: n => 'De los cuales ' + n + ' sin traza GPS (ninguna vía emparejada por Waze): no otorgan permisos y no cuentan.',
@@ -460,7 +472,7 @@
             tipLast: (d, n, km) => 'Ultimo passaggio noto: il ' + d + ' (' + n + ' g fa, a ' + km + ' km).',
             tipWide: km => '⚠️ Questo viaggio è oltre il raggio indicato da WME (' + km + ' km). Viene usato perché il poligono di Waze ti colloca davvero in un\'area percorsa, ma nulla prova che sia stato questo viaggio ad aprirla. Quello che l’ha aperta può essere più vecchio: la data mostrata è un massimo.',
             tipRadiusGuess: m => '⚠️ WME non ha fornito il raggio dei tuoi permessi: ' + m + ' mi ipotizzate. Se il tuo è più piccolo, ti resta meno tempo di quanto indicato.',
-            tipRule: n => 'Durata assunta: ' + n + ' giorni dopo il viaggio (regola del Wazeopedia), che aggiunge «o l\'ultimo giorno del mese, se posteriore»: se questo arrotondamento esiste, la data reale è successiva. Il calcolo riguarda il CENTRO della mappa.',
+            tipRule: n => 'Durata assunta: ' + n + ' giorni dopo la data del viaggio (regola di Waze da novembre 2025; prima erano 90 giorni). La scadenza è presa il prima possibile: la mezzanotte dell’ultimo giorno. Il calcolo riguarda il CENTRO della mappa.',
             tipRetreat: d => 'Rimozione stimata il ' + d + '.',
             tipPermHere: 'Qui il tuo accesso non dipende dalla guida.',
             tipMax: (max, age) => 'Sei in un’area percorsa, ma il viaggio che l’ha aperta non è nello storico noto (che risale a ' + age + ' giorni): è più vecchio, o non ancora caricato. Restano al massimo ' + max + ' giorni.',
@@ -474,7 +486,7 @@
             pAsEditor: 'Ignora le mie aree gestite (vedi cosa vedrebbe un editor senza permessi)',
             pWhat: 'Cosa indica il distintivo',
             pRadiusGuess: 'ipotizzato',
-            pWhatText: (km, d) => 'Il conto alla rovescia parte dall’<b>ultimo passaggio</b> entro ' + km + ' dal centro della mappa, più ' + d + ' giorni. Questa durata viene dal Wazeopedia, che aggiunge «o l’ultimo giorno del mese, se posteriore»: <b>~N g</b> non sovrastima mai il tempo che ti resta.<br><br>Ciò che è <b>tratteggiato</b> è un limite superiore (<b>≤ N g</b>): il viaggio che ha aperto l’area è più vecchio dello storico disponibile, o è stato trovato solo oltre il raggio indicato da WME, o quel raggio è stato ipotizzato. La data esatta è sconosciuta, ma non è successiva a quella mostrata.',
+            pWhatText: (km, d) => 'Il conto alla rovescia parte dall’<b>ultimo passaggio</b> entro ' + km + ' dal centro della mappa, più ' + d + ' giorni: la durata applicata da Waze da novembre 2025 (prima erano 90 giorni). La scadenza è fissata a mezzanotte e il conteggio è arrotondato per difetto: <b>~N g</b> non sovrastima mai il tempo che ti resta.<br><br>Ciò che è <b>tratteggiato</b> è un limite superiore (<b>≤ N g</b>): il viaggio che ha aperto l’area è più vecchio dello storico disponibile, o è stato trovato solo oltre il raggio indicato da WME, o quel raggio è stato ipotizzato. La data esatta è sconosciuta, ma non è successiva a quella mostrata.',
             pCache: 'Storico in cache', pCacheNone: 'Nessun viaggio in cache.',
             pCacheInfo: (n, a, b, age, v) => n + ' viaggi, dal ' + a + ' al ' + b + ' — cioè ' + age + ' giorni di copertura sui ' + v + ' di validità.',
             pCacheEmpty: n => 'Di cui ' + n + ' senza traccia GPS (nessuna strada associata da Waze): non danno permessi e non contano.',
@@ -524,7 +536,7 @@
             tipLast: (d, n, km) => 'Última passagem conhecida: em ' + d + ' (há ' + n + ' d, a ' + km + ' km).',
             tipWide: km => '⚠️ Este trajeto está além do raio informado pelo WME (' + km + ' km). Ele é usado porque o polígono do Waze de fato coloca você numa área percorrida, mas nada prova que tenha sido ele a abri-la. O que a abriu pode ser mais antigo: a data mostrada é um máximo.',
             tipRadiusGuess: m => '⚠️ O WME não informou o raio das suas permissões: ' + m + ' mi presumidas. Se o seu for menor, resta menos tempo do que o mostrado.',
-            tipRule: n => 'Duração adotada: ' + n + ' dias após o trajeto (regra do Wazeopedia), que acrescenta «ou o último dia do mês, o que for mais tarde»: se esse arredondamento existir, a data real é posterior. O cálculo vale para o CENTRO do mapa.',
+            tipRule: n => 'Duração adotada: ' + n + ' dias após a data do trajeto (regra do Waze desde novembro de 2025; antes eram 90 dias). O vencimento é considerado o mais cedo possível: meia-noite do último dia. O cálculo vale para o CENTRO do mapa.',
             tipRetreat: d => 'Remoção estimada em ' + d + '.',
             tipPermHere: 'Aqui seu acesso não depende de dirigir.',
             tipMax: (max, age) => 'Você está numa área percorrida, mas o trajeto que a abriu não está no histórico conhecido (que cobre ' + age + ' dias): é mais antigo, ou ainda não foi carregado. Restam no máximo ' + max + ' dias.',
@@ -538,7 +550,7 @@
             pAsEditor: 'Ignorar minhas áreas gerenciadas (ver o que veria um editor sem permissões)',
             pWhat: 'O que o distintivo indica',
             pRadiusGuess: 'presumido',
-            pWhatText: (km, d) => 'A contagem parte da <b>última passagem</b> a menos de ' + km + ' do centro do mapa, mais ' + d + ' dias. Essa duração vem do Wazeopedia, que acrescenta «ou o último dia do mês, o que for mais tarde»: <b>~N d</b> nunca superestima o tempo restante.<br><br>O que está <b>hachurado</b> é um limite superior (<b>≤ N d</b>): o trajeto que abriu a área é anterior ao histórico disponível, ou só foi encontrado além do raio informado pelo WME, ou esse raio teve de ser presumido. A data exata é desconhecida, mas não é posterior à mostrada.',
+            pWhatText: (km, d) => 'A contagem parte da <b>última passagem</b> a menos de ' + km + ' do centro do mapa, mais ' + d + ' dias: a duração aplicada pelo Waze desde novembro de 2025 (antes eram 90 dias). O vencimento é fixado à meia-noite e a contagem é arredondada para baixo: <b>~N d</b> nunca superestima o tempo restante.<br><br>O que está <b>hachurado</b> é um limite superior (<b>≤ N d</b>): o trajeto que abriu a área é anterior ao histórico disponível, ou só foi encontrado além do raio informado pelo WME, ou esse raio teve de ser presumido. A data exata é desconhecida, mas não é posterior à mostrada.',
             pCache: 'Histórico em cache', pCacheNone: 'Nenhum trajeto em cache.',
             pCacheInfo: (n, a, b, age, v) => n + ' trajetos, de ' + a + ' a ' + b + ' — ou seja ' + age + ' dias de cobertura sobre os ' + v + ' de validade.',
             pCacheEmpty: n => 'Dos quais ' + n + ' sem traço GPS (nenhuma via associada pelo Waze): não concedem permissões e não contam.',
@@ -588,7 +600,7 @@
             tipLast: (d, n, km) => 'Última passagem conhecida: a ' + d + ' (há ' + n + ' d, a ' + km + ' km).',
             tipWide: km => '⚠️ Este trajeto está além do raio indicado pelo WME (' + km + ' km). É usado porque o polígono do Waze o coloca de facto numa área percorrida, mas nada prova que tenha sido ele a abri-la. O que a abriu pode ser mais antigo: a data indicada é um máximo.',
             tipRadiusGuess: m => '⚠️ O WME não indicou o raio das suas permissões: ' + m + ' mi presumidas. Se o seu for menor, resta menos tempo do que o indicado.',
-            tipRule: n => 'Duração adotada: ' + n + ' dias após o trajeto (regra do Wazeopedia), que acrescenta «ou o último dia do mês, o que for mais tarde»: se esse arredondamento existir, a data real é posterior. O cálculo vale para o CENTRO do mapa.',
+            tipRule: n => 'Duração considerada: ' + n + ' dias após a data do trajeto (regra do Waze desde novembro de 2025; anteriormente, 90 dias). O fim é contado o mais cedo possível: à meia-noite do último dia. O cálculo aplica-se ao CENTRO do mapa.',
             tipRetreat: d => 'Remoção estimada a ' + d + '.',
             tipPermHere: 'Aqui o seu acesso não depende de conduzir.',
             tipMax: (max, age) => 'Está numa área percorrida, mas o trajeto que a abriu não está no histórico conhecido (que cobre ' + age + ' dias): é mais antigo, ou ainda não foi carregado. Restam no máximo ' + max + ' dias.',
@@ -602,7 +614,7 @@
             pAsEditor: 'Ignorar as minhas áreas geridas (ver o que veria um editor sem permissões)',
             pWhat: 'O que o distintivo indica',
             pRadiusGuess: 'presumido',
-            pWhatText: (km, d) => 'A contagem parte da <b>última passagem</b> a menos de ' + km + ' do centro do mapa, mais ' + d + ' dias. Esta duração vem do Wazeopedia, que acrescenta «ou o último dia do mês, o que for mais tarde»: <b>~N d</b> nunca sobrestima o tempo restante.<br><br>O que está <b>tracejado</b> é um limite superior (<b>≤ N d</b>): o trajeto que abriu a área é anterior ao histórico disponível, ou só foi encontrado para lá do raio indicado pelo WME, ou esse raio teve de ser presumido. A data exata é desconhecida, mas não é posterior à indicada.',
+            pWhatText: (km, d) => 'A contagem parte da <b>última passagem</b> a menos de ' + km + ' do centro do mapa, mais ' + d + ' dias: a duração que o Waze aplica desde novembro de 2025 (anteriormente, 90 dias). O fim é fixado à meia-noite e a contagem é arredondada por defeito: <b>~N d</b> nunca sobrestima o tempo restante.<br><br>O que está <b>tracejado</b> é um limite superior (<b>≤ N d</b>): o trajeto que abriu a área é anterior ao histórico disponível, ou só foi encontrado para lá do raio indicado pelo WME, ou esse raio teve de ser presumido. A data exata é desconhecida, mas não é posterior à indicada.',
             pCache: 'Histórico em cache', pCacheNone: 'Nenhum trajeto em cache.',
             pCacheInfo: (n, a, b, age, v) => n + ' trajetos, de ' + a + ' a ' + b + ' — ou seja ' + age + ' dias de cobertura sobre os ' + v + ' de validade.',
             pCacheEmpty: n => 'Dos quais ' + n + ' sem traço GPS (nenhuma via associada pelo Waze): não concedem permissões e não contam.',
@@ -652,7 +664,7 @@
             tipLast: (d, n, km) => 'הנסיעה הידועה האחרונה: ' + d + ' (לפני ' + (n === 1 ? 'יום אחד' : n + ' ימים') + ', במרחק ' + km + ' ק"מ).',
             tipWide: km => '⚠️ נסיעה זו נמצאת מעבר לרדיוס ש-WME מדווח עליו (' + km + ' ק"מ). היא נלקחת בחשבון משום שהמצולע של Waze אכן ממקם אתכם באזור נסיעה, אך אין הוכחה שדווקא היא פתחה אותו. הנסיעה שפתחה אותו עשויה להיות ישנה יותר: התאריך המוצג הוא מקסימום.',
             tipRadiusGuess: m => '⚠️ WME לא מסר את רדיוס ההרשאות שלך: מונחים ' + m + ' מייל. אם שלך קטן יותר, נותר לך פחות זמן מהמוצג.',
-            tipRule: n => 'משך שנלקח: ' + (n === 1 ? 'יום אחד' : n + ' ימים') + ' לאחר הנסיעה (כלל ה-Wazeopedia), שמוסיף «או היום האחרון של החודש, המאוחר מביניהם»: אם עיגול זה קיים, התאריך האמיתי מאוחר יותר. החישוב מתייחס למרכז המפה.',
+            tipRule: n => 'משך שנלקח: ' + (n === 1 ? 'יום אחד' : n + ' ימים') + ' לאחר תאריך הנסיעה (כלל של Waze מאז נובמבר 2025; קודם לכן 90 ימים). סיום התוקף נלקח במועד המוקדם ביותר: חצות של היום האחרון. החישוב מתייחס למרכז המפה.',
             tipRetreat: d => 'הסרה משוערת בתאריך ' + d + '.',
             tipPermHere: 'כאן הגישה שלכם אינה תלויה בנסיעה.',
             tipMax: (max, age) => 'אתם באזור נסיעה, אך הנסיעה שפתחה אותו אינה בהיסטוריה המוכרת (שמגיעה ' + (age === 1 ? 'יום אחד' : age + ' ימים') + ' אחורה): היא ישנה יותר, או שטרם נטענה. נותרו לכל היותר ' + (max === 1 ? 'יום אחד' : max + ' ימים') + '.',
@@ -666,7 +678,7 @@
             pAsEditor: 'התעלמות מהאזורים המנוהלים שלי (לראות מה יראה עורך ללא הרשאות)',
             pWhat: 'מה מציין התג',
             pRadiusGuess: 'משוער',
-            pWhatText: (km, d) => 'הספירה מתחילה מה<b>נסיעה האחרונה</b> במרחק של עד ' + km + ' ממרכז המפה, בתוספת ' + d + ' ימים. משך זה מגיע מה-Wazeopedia, שמוסיף «או היום האחרון של החודש, המאוחר מביניהם»: לכן <b>~N ימים</b> לעולם אינו מגזים בזמן שנותר.<br><br>מה שמסומן ב<b>קווקוו</b> הוא גבול עליון (<b>עד N ימים</b>): הנסיעה שפתחה את האזור ישנה מההיסטוריה הזמינה, או נמצאה רק מעבר לרדיוס ש-WME מדווח, או שהרדיוס הזה הונח. התאריך המדויק אינו ידוע, אך הוא אינו מאוחר מזה המוצג.',
+            pWhatText: (km, d) => 'הספירה מתחילה מה<b>נסיעה האחרונה</b> במרחק של עד ' + km + ' ממרכז המפה, בתוספת ' + d + ' ימים: זה המשך ש-Waze מחיל מאז נובמבר 2025 (קודם לכן 90 ימים). סיום התוקף נקבע לחצות והספירה מעוגלת כלפי מטה: לכן <b>~N ימים</b> לעולם אינו מגזים בזמן שנותר.<br><br>מה שמסומן ב<b>קווקוו</b> הוא גבול עליון (<b>עד N ימים</b>): הנסיעה שפתחה את האזור ישנה מההיסטוריה הזמינה, או נמצאה רק מעבר לרדיוס ש-WME מדווח, או שהרדיוס הזה הונח. התאריך המדויק אינו ידוע, אך הוא אינו מאוחר מזה המוצג.',
             pCache: 'היסטוריה במטמון', pCacheNone: 'אין נסיעות במטמון.',
             pCacheInfo: (n, a, b, age, v) => n + ' נסיעות, מ-' + a + ' עד ' + b + ' — כלומר ' + age + ' ימי כיסוי מתוך ' + v + ' ימי התוקף.',
             pCacheEmpty: n => 'מתוכן ' + n + ' ללא מסלול GPS (Waze לא התאים אף כביש): הן אינן מעניקות הרשאות ואינן נספרות.',
@@ -1052,13 +1064,17 @@
     // 25/09/2026). Arrondi vers le BAS, avec un état à part pour le dernier jour : « < 1 j », en
     // rouge — pas « expiré », puisque le droit court encore.
     function echeance(t0) {
-        // Deux lectures de « 90 jours après » : 90 × 24 h, ou 90 jours de calendrier à la même
-        // heure. Elles diffèrent d'une heure quand un changement d'heure tombe entre les deux. La
-        // règle réelle de Waze n'est pas mesurée : on retient la plus PRÉCOCE, pour ne jamais
-        // repousser l'échéance.
+        // Plusieurs lectures de « 63 jours après LA DATE du trajet » (wiki américain) : 63 × 24 h ;
+        // 63 jours de calendrier à la même heure (une heure d'écart si un changement d'heure tombe
+        // entre les deux) ; minuit du jour J+63, en date LOCALE ou en date UTC — un trajet à 00 h 30
+        // à Paris est daté de la VEILLE en UTC. L'heure exacte de Waze n'est pas mesurée : on retient
+        // la plus PRÉCOCE, pour ne jamais repousser l'échéance.
+        const d = new Date(t0);
         const cal = new Date(t0);
         cal.setDate(cal.getDate() + VALID_DAYS);
-        return Math.min(t0 + VALID_DAYS * D_MS, cal.getTime());
+        const minuitLocal = new Date(d.getFullYear(), d.getMonth(), d.getDate() + VALID_DAYS).getTime();
+        const minuitUTC = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + VALID_DAYS);
+        return Math.min(t0 + VALID_DAYS * D_MS, cal.getTime(), minuitLocal, minuitUTC);
     }
     function restant(expireLe) {
         const ms = expireLe - Date.now();
