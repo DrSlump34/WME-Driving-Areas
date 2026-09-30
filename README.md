@@ -184,7 +184,7 @@ sur l'image, et une route qui ne doit pas voler la vedette au sablier.
 
 ## État
 
-`0.07.03` — avant le premier chargement, le badge ne dit plus « historique non chargé », qui se lisait comme une panne, mais « cliquez pour charger l’historique », et il ouvre l'onglet du script sur le bouton de chargement. `0.07.02` — le SDK en mode asynchrone. `0.07.01` — l'onglet Scripts aligné sur les valeurs mesurées dans WME de WCT, WJN et WRP (bleu #2196f3, boutons en pilule), et le sablier sans fond. `0.07.00` — un audit complet (25/09/2026, 22 agents) : 18 défauts, dont 5 majeurs, tous traités.
+`0.07.04` (la 0.07.03, jamais publiée, n'ouvrait pas l'onglet) — avant le premier chargement, le badge ne dit plus « historique non chargé », qui se lisait comme une panne, mais « cliquez pour charger l’historique », et il ouvre l'onglet du script sur le bouton de chargement. `0.07.02` — le SDK en mode asynchrone. `0.07.01` — l'onglet Scripts aligné sur les valeurs mesurées dans WME de WCT, WJN et WRP (bleu #2196f3, boutons en pilule), et le sablier sans fond. `0.07.00` — un audit complet (25/09/2026, 22 agents) : 18 défauts, dont 5 majeurs, tous traités.
 Trois cas pouvaient annoncer **plus de temps qu'il n'en restait** :
 
 - **Le temps restant s'arrondit vers le bas**, une seule règle pour le badge, le calque et les

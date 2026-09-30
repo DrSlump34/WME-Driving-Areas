@@ -9,7 +9,7 @@
 // @name:he      WME Driving Areas
 // @icon         data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc2NCcgaGVpZ2h0PSc2NCcgdmlld0JveD0nMCAwIDY0IDY0Jz4gPHJlY3Qgd2lkdGg9JzY0JyBoZWlnaHQ9JzY0JyByeD0nMTInIGZpbGw9JyMxNTY1YzAnLz4gPHJlY3QgeD0nMTUnIHk9JzgnIHdpZHRoPSczNCcgaGVpZ2h0PSc2JyByeD0nMycgZmlsbD0nI2ZmZmZmZicvPiA8cmVjdCB4PScxNScgeT0nNTAnIHdpZHRoPSczNCcgaGVpZ2h0PSc2JyByeD0nMycgZmlsbD0nI2ZmZmZmZicvPiA8cGF0aCBkPSdNMTkgMTQgTDQ1IDE0IEwzNCAzMiBMNDUgNTAgTDE5IDUwIEwzMCAzMiBaJyBmaWxsPScjZmZmZmZmJy8+IDxwYXRoIGQ9J00yMyAxOCBMNDEgMTggTDMyIDMyIFonIGZpbGw9JyNmYjhjMDAnLz4gPHBhdGggZD0nTTMyIDQwIEw0MSA0NiBMMjMgNDYgWicgZmlsbD0nI2ZiOGMwMCcvPiA8cmVjdCB4PSczMScgeT0nMzAnIHdpZHRoPScyJyBoZWlnaHQ9JzEyJyBmaWxsPScjZmI4YzAwJy8+PC9zdmc+
 // @namespace    https://github.com/DrSlump34
-// @version      0.07.03
+// @version      0.07.04
 // @description  Shows how long your driving-based editing rights will last, next to the WME location label — rebuilt from your drive history. Adds a GPX export and a countdown to each drive.
 // @description:fr Affiche le temps restant sur vos droits d'édition obtenus en roulant, à côté du libellé de localisation de WME — reconstruit depuis l'historique des trajets. Ajoute un export GPX et un décompte à chaque trajet.
 // @description:de Zeigt neben der WME-Ortsanzeige, wie lange Ihre durch Fahrten erworbenen Bearbeitungsrechte noch gelten — rekonstruiert aus Ihrem Fahrtenverlauf. Mit GPX-Export und Countdown je Fahrt.
@@ -1202,16 +1202,19 @@
     // - le bouton « Scripts » du tiroir est dans l'ombre de wz-navigation-item[data-for=userscript_tab] ;
     //   un clic sur l'élément hôte ne fait RIEN, et un clic quand Scripts est déjà ouvert le REFERME
     //   ⇒ ne cliquer que si la liste des onglets de scripts (#user-tabs) n'est pas affichée ;
-    // - l'onglet du script est le lien a[href="#<id du panneau>"] (onglets Bootstrap).
+    // - l'onglet du script est le lien a[href="#<id de la section>"] (onglets Bootstrap).
+    //   🔴 Ce n'est PAS l'id de paneEl : le tabPane rendu par le SDK est un DIV SANS id, À L'INTÉRIEUR
+    //   de section#userscript-tab-N.tab-pane. La 0.07.03 testait paneEl.id et sortait sans rien faire.
     function ouvrirOnglet() {
-        if (!paneEl || !paneEl.id) return;
+        const section = paneEl && paneEl.closest('.tab-pane[id]');
+        if (!section) { log('section de l’onglet introuvable'); return; }
         const onglets = document.getElementById('user-tabs');
         if (!onglets || onglets.offsetParent === null) {
             const nav = document.querySelector('wz-navigation-item[data-for="userscript_tab"]');
             const b = nav && nav.shadowRoot && nav.shadowRoot.querySelector('button');
             if (b) b.click(); else log('bouton Scripts introuvable');
         }
-        const lien = document.querySelector('a[href="#' + paneEl.id + '"]');
+        const lien = document.querySelector('a[href="#' + section.id + '"]');
         if (lien) lien.click(); else log('onglet du script introuvable');
         setTimeout(() => {
             const btn = paneEl.querySelector('#wda-load');
