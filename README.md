@@ -38,8 +38,8 @@ nom doit être désinstallée : les deux scripts poseraient chacun leur badge.*
 
 | Jours restants | Couleur |
 |---|---|
-| plus de 60 | vert |
-| 31 à 60 | jaune |
+| plus de 42 | vert |
+| 31 à 42 | jaune |
 | 15 à 30 | orange |
 | 0 à 14 (le dernier jour se lit « < 1 j ») | rouge |
 | expiré | gris |
@@ -60,7 +60,7 @@ messages dans une seule couleur.
 
 Un décompte n'a de sens que pour qui perdra vraiment l'accès. Pour un Country Manager ou un Champ,
 le trajet ouvre bien une zone de roulage, mais elle est redondante avec un accès qui ne s'éteint
-pas : afficher `J-90` lui ferait lire une échéance qui ne le concerne pas. La pastille rend alors
+pas : afficher `J-63` lui ferait lire une échéance qui ne le concerne pas. La pastille rend alors
 **∞**, et l'infobulle garde la date réelle.
 
 Deux degrés de certitude, dits dans l'infobulle :
@@ -112,22 +112,29 @@ Le polygone répond à « suis-je concerné ici ? » (exactement), les traces da
 quand ? ». Les deux questions sont séparées pour qu'une imprécision sur le rayon ne coûte jamais un
 faux négatif sur le droit lui-même.
 
-## Les trois limites, et elles sont dites dans l'interface
+## La règle, et les limites dites dans l'interface
 
-1. **L'archive est plus courte que le droit** — 63 jours mesurés pour 90 jours de validité, et
-   59 jours confirmés le 08/09/2026 sur un second compte. Les secteurs ouverts par un trajet plus
-   ancien ne sont datables qu'« au plus tard » (`≤ N j`). Le trou se comble avec le temps : le cache
-   local garde les trajets une fois vus, pendant 130 jours, et se recharge seul au-delà de 12 h.
-   ⚠️ **C'est Waze qui cesse de servir ces trajets, pas le script qui les jette.** Un trajet sorti
-   de la liste « Vos trajets » n'a plus de pastille — il n'y a plus de carte où la poser — mais il
-   compte toujours dans le badge et reste dessiné sur le calque. Si la place manque vraiment dans la
-   mémoire locale du navigateur, le panneau le dit maintenant en toutes lettres.
+**Un trajet donne des droits pendant 63 jours** — depuis novembre 2025, et non plus 90. Annonce du
+staff aux Coordinators le 25/09/2025, notification dans WME le 02/11/2025, wiki américain : « expires
+63 days after the date of the drive ». L'échéance est prise **au plus tôt** : minuit du 63e jour, en
+date locale ou en date UTC (un trajet à 0 h 30 à Paris est daté de la veille en UTC), et le décompte
+s'arrondit vers le bas : `~N j` ne surestime jamais le temps restant.
+
+🔴 **Jusqu'à la 0.07.04, le script comptait 90 jours**, d'après une page du Wazeopedia restée
+périmée, et annonçait donc **27 jours de trop**. La mesure le disait pourtant : l'archive des
+trajets remonte 63 jours — c'est la même rétention que le droit, pas une archive « plus courte que
+le droit » comme ce README l'affirmait. Signalé par logan_zer et SpeedyRom1 le 30/09/2026.
+
+1. **L'archive et le droit ont la même durée.** Un trajet qui sort de la liste « Vos trajets »
+   n'ouvre plus de droit. Le cache local garde les trajets une fois vus, pendant 130 jours, et se
+   recharge seul au-delà de 12 h : les trajets expirés restent dessinés en gris sur le calque. Si la
+   place manque dans la mémoire locale du navigateur, le panneau le dit en toutes lettres.
 2. **Le polygone servi par Waze est plus large que le tampon annoncé.** Mesuré sur une zone de
    204 km² ouverte par un trajet connu : 25 % de ses points sont à plus de 6,437 km de toute trace,
    jusqu'à 11,4 km. D'où la recherche élargie (× 2,5), dont le résultat est une borne haute : `≤ N j`, hachuré.
-3. **La règle des 90 jours vient du Wazeopedia**, qui ajoute « ou le dernier jour du mois, selon ce
-   qui est le plus tardif ». Si cet arrondi existe, la date réelle est *postérieure* à celle
-   annoncée : `~N j` ne surestime jamais le temps restant, et le décompte s'arrondit vers le bas.
+3. **L'heure exacte de l'expiration n'est pas mesurée** : d'où la lecture la plus précoce (minuit).
+   Le staff a prévenu que la durée pourrait descendre à 40 jours : c'est une seule constante,
+   `VALID_DAYS`, et les couleurs suivent (le vert commence aux deux tiers de la durée).
 
 Par ailleurs, `minDistance=0` est important : le défaut de WME (1000) écarte 41 % des trajets, et
 ceux-là ouvrent des droits comme les autres. Les trajets à `totalRoadMeters = 0` n'ont, eux, aucune
@@ -186,7 +193,7 @@ sur l'image, et une route qui ne doit pas voler la vedette au sablier.
 
 ## État
 
-`0.07.04` (la 0.07.03, jamais publiée, n'ouvrait pas l'onglet) — avant le premier chargement, le badge ne dit plus « historique non chargé », qui se lisait comme une panne, mais « cliquez pour charger l’historique », et il ouvre l'onglet du script sur le bouton de chargement. `0.07.02` — le SDK en mode asynchrone. `0.07.01` — l'onglet Scripts aligné sur les valeurs mesurées dans WME de WCT, WJN et WRP (bleu #2196f3, boutons en pilule), et le sablier sans fond. `0.07.00` — un audit complet (25/09/2026, 22 agents) : 18 défauts, dont 5 majeurs, tous traités.
+`0.08.00` — **la durée du droit passe de 90 à 63 jours**, la règle de Waze depuis novembre 2025 (voir plus haut) ; échéance à minuit du 63e jour, au plus tôt ; vert au-delà de 42 jours ; textes de la règle réécrits dans les 8 langues. `0.07.04` (la 0.07.03, jamais publiée, n'ouvrait pas l'onglet) — avant le premier chargement, le badge ne dit plus « historique non chargé », qui se lisait comme une panne, mais « cliquez pour charger l’historique », et il ouvre l'onglet du script sur le bouton de chargement. `0.07.02` — le SDK en mode asynchrone. `0.07.01` — l'onglet Scripts aligné sur les valeurs mesurées dans WME de WCT, WJN et WRP (bleu #2196f3, boutons en pilule), et le sablier sans fond. `0.07.00` — un audit complet (25/09/2026, 22 agents) : 18 défauts, dont 5 majeurs, tous traités.
 Trois cas pouvaient annoncer **plus de temps qu'il n'en restait** :
 
 - **Le temps restant s'arrondit vers le bas**, une seule règle pour le badge, le calque et les
