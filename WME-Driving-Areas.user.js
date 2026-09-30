@@ -9,7 +9,7 @@
 // @name:he      WME Driving Areas
 // @icon         data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc2NCcgaGVpZ2h0PSc2NCcgdmlld0JveD0nMCAwIDY0IDY0Jz4gPHJlY3Qgd2lkdGg9JzY0JyBoZWlnaHQ9JzY0JyByeD0nMTInIGZpbGw9JyMxNTY1YzAnLz4gPHJlY3QgeD0nMTUnIHk9JzgnIHdpZHRoPSczNCcgaGVpZ2h0PSc2JyByeD0nMycgZmlsbD0nI2ZmZmZmZicvPiA8cmVjdCB4PScxNScgeT0nNTAnIHdpZHRoPSczNCcgaGVpZ2h0PSc2JyByeD0nMycgZmlsbD0nI2ZmZmZmZicvPiA8cGF0aCBkPSdNMTkgMTQgTDQ1IDE0IEwzNCAzMiBMNDUgNTAgTDE5IDUwIEwzMCAzMiBaJyBmaWxsPScjZmZmZmZmJy8+IDxwYXRoIGQ9J00yMyAxOCBMNDEgMTggTDMyIDMyIFonIGZpbGw9JyNmYjhjMDAnLz4gPHBhdGggZD0nTTMyIDQwIEw0MSA0NiBMMjMgNDYgWicgZmlsbD0nI2ZiOGMwMCcvPiA8cmVjdCB4PSczMScgeT0nMzAnIHdpZHRoPScyJyBoZWlnaHQ9JzEyJyBmaWxsPScjZmI4YzAwJy8+PC9zdmc+
 // @namespace    https://github.com/DrSlump34
-// @version      0.07.02
+// @version      0.07.03
 // @description  Shows how long your driving-based editing rights will last, next to the WME location label — rebuilt from your drive history. Adds a GPX export and a countdown to each drive.
 // @description:fr Affiche le temps restant sur vos droits d'édition obtenus en roulant, à côté du libellé de localisation de WME — reconstruit depuis l'historique des trajets. Ajoute un export GPX et un décompte à chaque trajet.
 // @description:de Zeigt neben der WME-Ortsanzeige, wie lange Ihre durch Fahrten erworbenen Bearbeitungsrechte noch gelten — rekonstruiert aus Ihrem Fahrtenverlauf. Mit GPX-Export und Countdown je Fahrt.
@@ -190,8 +190,9 @@
             jExpTip: d => 'Ce trajet ne donne plus de droits depuis le ' + d + '.',
             jInfZone: d => 'Votre accès ici est permanent (zone gérée) : ce décompte ne vous concerne pas. Pour information, ce trajet cesserait de donner des droits le ' + d + '.',
             jInfPays: (n, d) => 'Vous gérez ' + n + ' pays : si ce trajet s\'y trouve, votre accès est permanent. Waze ne descend aucune géométrie de pays, cela ne peut donc pas être vérifié ici. Sinon, ce trajet cesse de donner des droits le ' + d + '.',
-            bNoHist: 'historique non chargé',
-            bNoHistTip: 'Ouvrez l\'onglet ' + SCRIPT_NAME + ' (icône Scripts) et lancez le chargement de l\'historique.',
+            bNoHist: 'cliquez pour charger l’historique',
+            bNoHistTip: 'Au premier lancement, l’historique de vos trajets se charge à la main. Un clic ouvre l’onglet ' + SCRIPT_NAME + ' sur le bouton de chargement.',
+            pNoHist: 'historique non chargé',
             mZone: 'zone gérée', mCountry: 'pays géré',
             bPerm: m => 'accès permanent (' + m + ')',
             bPermDrove: (m, n) => 'accès permanent (' + m + ') · roulé il y a ' + n + ' j',
@@ -253,8 +254,9 @@
             jExpTip: d => 'This drive has granted no rights since ' + d + '.',
             jInfZone: d => 'Your access here is permanent (managed area): this countdown does not concern you. For reference, this drive would stop granting rights on ' + d + '.',
             jInfPays: (n, d) => 'You manage ' + n + ' country/ies: if this drive is inside one, your access is permanent. Waze sends no country geometry, so this cannot be checked here. Otherwise this drive stops granting rights on ' + d + '.',
-            bNoHist: 'history not loaded',
-            bNoHistTip: 'Open the ' + SCRIPT_NAME + ' tab (Scripts icon) and load your drive history.',
+            bNoHist: 'click to load your drive history',
+            bNoHistTip: 'On first use, your drive history is loaded by hand. One click opens the ' + SCRIPT_NAME + ' tab at the load button.',
+            pNoHist: 'history not loaded',
             mZone: 'managed area', mCountry: 'managed country',
             bPerm: m => 'permanent access (' + m + ')',
             bPermDrove: (m, n) => 'permanent access (' + m + ') · driven ' + n + ' d ago',
@@ -316,8 +318,9 @@
             jExpTip: d => 'Diese Fahrt gewährt seit dem ' + d + ' keine Rechte mehr.',
             jInfZone: d => 'Ihr Zugriff ist hier dauerhaft (verwalteter Bereich): dieser Countdown betrifft Sie nicht. Zur Information: diese Fahrt würde am ' + d + ' aufhören, Rechte zu gewähren.',
             jInfPays: (n, d) => 'Sie verwalten ' + n + ' Land/Länder: liegt diese Fahrt darin, ist Ihr Zugriff dauerhaft. Waze liefert keine Ländergeometrie, das lässt sich hier also nicht prüfen. Andernfalls endet diese Fahrt am ' + d + '.',
-            bNoHist: 'Verlauf nicht geladen',
-            bNoHistTip: 'Öffnen Sie den Reiter ' + SCRIPT_NAME + ' (Symbol „Scripts“) und laden Sie den Fahrtenverlauf.',
+            bNoHist: 'Klicken, um den Verlauf zu laden',
+            bNoHistTip: 'Beim ersten Start wird der Fahrtenverlauf von Hand geladen. Ein Klick öffnet den Reiter ' + SCRIPT_NAME + ' bei der Schaltfläche zum Laden.',
+            pNoHist: 'Verlauf nicht geladen',
             mZone: 'verwalteter Bereich', mCountry: 'verwaltetes Land',
             bPerm: m => 'dauerhafter Zugriff (' + m + ')',
             bPermDrove: (m, n) => 'dauerhafter Zugriff (' + m + ') · gefahren vor ' + n + ' T',
@@ -379,8 +382,9 @@
             jExpTip: d => 'Este viaje ya no otorga permisos desde el ' + d + '.',
             jInfZone: d => 'Su acceso aquí es permanente (área gestionada): esta cuenta atrás no le concierne. A título informativo, este viaje dejaría de otorgar permisos el ' + d + '.',
             jInfPays: (n, d) => 'Usted gestiona ' + n + ' país(es): si este viaje está dentro, su acceso es permanente. Waze no envía la geometría de los países, así que no puede comprobarse aquí. En caso contrario, este viaje deja de otorgar permisos el ' + d + '.',
-            bNoHist: 'historial no cargado',
-            bNoHistTip: 'Abra la pestaña ' + SCRIPT_NAME + ' (icono Scripts) y cargue el historial de viajes.',
+            bNoHist: 'clic para cargar el historial',
+            bNoHistTip: 'La primera vez, el historial de viajes se carga a mano. Un clic abre la pestaña ' + SCRIPT_NAME + ' en el botón de carga.',
+            pNoHist: 'historial no cargado',
             mZone: 'área gestionada', mCountry: 'país gestionado',
             bPerm: m => 'acceso permanente (' + m + ')',
             bPermDrove: (m, n) => 'acceso permanente (' + m + ') · conducido hace ' + n + ' d',
@@ -442,8 +446,9 @@
             jExpTip: d => 'Questo viaggio non dà più permessi dal ' + d + '.',
             jInfZone: d => 'Il tuo accesso qui è permanente (area gestita): questo conto alla rovescia non ti riguarda. A titolo informativo, questo viaggio smetterebbe di dare permessi il ' + d + '.',
             jInfPays: (n, d) => 'Gestisci ' + n + ' paese/i: se questo viaggio vi rientra, il tuo accesso è permanente. Waze non invia la geometria dei paesi, quindi non è verificabile qui. Altrimenti questo viaggio smette di dare permessi il ' + d + '.',
-            bNoHist: 'storico non caricato',
-            bNoHistTip: 'Apri la scheda ' + SCRIPT_NAME + ' (icona Scripts) e carica lo storico dei viaggi.',
+            bNoHist: 'clicca per caricare lo storico',
+            bNoHistTip: 'Al primo avvio, lo storico dei viaggi si carica a mano. Un clic apre la scheda ' + SCRIPT_NAME + ' sul pulsante di caricamento.',
+            pNoHist: 'storico non caricato',
             mZone: 'area gestita', mCountry: 'paese gestito',
             bPerm: m => 'accesso permanente (' + m + ')',
             bPermDrove: (m, n) => 'accesso permanente (' + m + ') · guidato ' + n + ' g fa',
@@ -505,8 +510,9 @@
             jExpTip: d => 'Este trajeto não concede permissões desde ' + d + '.',
             jInfZone: d => 'Seu acesso aqui é permanente (área gerenciada): esta contagem não lhe diz respeito. A título informativo, este trajeto deixaria de conceder permissões em ' + d + '.',
             jInfPays: (n, d) => 'Você gerencia ' + n + ' país(es): se este trajeto estiver dentro, seu acesso é permanente. O Waze não envia a geometria dos países, então isso não pode ser verificado aqui. Caso contrário, este trajeto deixa de conceder permissões em ' + d + '.',
-            bNoHist: 'histórico não carregado',
-            bNoHistTip: 'Abra a aba ' + SCRIPT_NAME + ' (ícone Scripts) e carregue o histórico de trajetos.',
+            bNoHist: 'clique para carregar o histórico',
+            bNoHistTip: 'Na primeira vez, o histórico de trajetos é carregado manualmente. Um clique abre a aba ' + SCRIPT_NAME + ' no botão de carregamento.',
+            pNoHist: 'histórico não carregado',
             mZone: 'área gerenciada', mCountry: 'país gerenciado',
             bPerm: m => 'acesso permanente (' + m + ')',
             bPermDrove: (m, n) => 'acesso permanente (' + m + ') · dirigido há ' + n + ' d',
@@ -568,8 +574,9 @@
             jExpTip: d => 'Este trajeto já não concede permissões desde ' + d + '.',
             jInfZone: d => 'O seu acesso aqui é permanente (área gerida): esta contagem não lhe diz respeito. A título informativo, este trajeto deixaria de conceder permissões a ' + d + '.',
             jInfPays: (n, d) => 'Gere ' + n + ' país(es): se este trajeto estiver dentro, o seu acesso é permanente. O Waze não envia a geometria dos países, pelo que não é verificável aqui. Caso contrário, este trajeto deixa de conceder permissões a ' + d + '.',
-            bNoHist: 'histórico não carregado',
-            bNoHistTip: 'Abra o separador ' + SCRIPT_NAME + ' (ícone Scripts) e carregue o histórico de trajetos.',
+            bNoHist: 'clique para carregar o histórico',
+            bNoHistTip: 'Na primeira utilização, o histórico de trajetos é carregado manualmente. Um clique abre o separador ' + SCRIPT_NAME + ' no botão de carregamento.',
+            pNoHist: 'histórico não carregado',
             mZone: 'área gerida', mCountry: 'país gerido',
             bPerm: m => 'acesso permanente (' + m + ')',
             bPermDrove: (m, n) => 'acesso permanente (' + m + ') · conduzido há ' + n + ' d',
@@ -631,8 +638,9 @@
             jExpTip: d => 'נסיעה זו אינה מעניקה הרשאות מאז ' + d + '.',
             jInfZone: d => 'הגישה שלכם כאן קבועה (אזור מנוהל): הספירה הזו אינה נוגעת לכם. לידיעה, נסיעה זו הייתה מפסיקה להעניק הרשאות בתאריך ' + d + '.',
             jInfPays: (n, d) => 'אתם מנהלים ' + n + ' מדינות: אם נסיעה זו נמצאת בהן, הגישה שלכם קבועה. Waze אינו שולח גאומטריה של מדינות, ולכן לא ניתן לבדוק זאת כאן. אחרת, נסיעה זו מפסיקה להעניק הרשאות בתאריך ' + d + '.',
-            bNoHist: 'ההיסטוריה לא נטענה',
-            bNoHistTip: 'פתחו את הלשונית ' + SCRIPT_NAME + ' (סמל Scripts) וטענו את היסטוריית הנסיעות.',
+            bNoHist: 'לחצו לטעינת ההיסטוריה',
+            bNoHistTip: 'בשימוש הראשון יש לטעון את היסטוריית הנסיעות ידנית. לחיצה פותחת את הלשונית ' + SCRIPT_NAME + ' ליד כפתור הטעינה.',
+            pNoHist: 'ההיסטוריה לא נטענה',
             mZone: 'אזור מנוהל', mCountry: 'מדינה מנוהלת',
             bPerm: m => 'גישה קבועה (' + m + ')',
             bPermDrove: (m, n) => 'גישה קבועה (' + m + ') · נסיעה לפני ' + (n === 1 ? 'יום אחד' : n + ' ימים') + '',
@@ -1112,7 +1120,10 @@
     const BADGE_ID = 'wda-badge';
 
     function texteBadge(v) {
-        if (!v.historique) return { txt: t('bNoHist'), cls: 'wda-gris', title: t('bNoHistTip') };
+        // ⚠️ « historique non chargé » se lisait comme une PANNE (SpeedyRom1 ④, 30/09/2026 : « ça me
+        // marque que ça ne charge pas ») : c'est l'état normal avant le premier chargement, qui est un
+        // geste de l'éditeur. Le badge dit donc le geste, et il y mène (ouvrirOnglet).
+        if (!v.historique) return { txt: t('bNoHist'), cls: 'wda-gris wda-action', title: t('bNoHistTip'), action: true };
         const km1 = nombre(v.rayonM / 1000, 1);
         const detail = [];
         if (v.rouleLe) {
@@ -1159,6 +1170,16 @@
         if (el && el.parentElement === hote) return el;
         el = document.createElement('span');
         el.id = BADGE_ID;
+        // Un seul écouteur par badge : il relit le verdict au clic, et ne fait rien quand le
+        // badge n'est pas une action. stopPropagation : le libellé de commune est l'hôte.
+        const agir = ev => {
+            if (!dernierVerdict || dernierVerdict.historique) return;
+            ev.preventDefault();
+            ev.stopPropagation();
+            ouvrirOnglet();
+        };
+        el.addEventListener('click', agir);
+        el.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') agir(ev); });
         hote.appendChild(el);
         return el;
     }
@@ -1171,6 +1192,37 @@
         el.textContent = b.txt;
         el.className = b.cls;
         el.title = b.title;
+        if (b.action) { el.setAttribute('role', 'button'); el.tabIndex = 0; }
+        else { el.removeAttribute('role'); el.removeAttribute('tabindex'); }
+    }
+
+    // Ouvre l'onglet du script et désigne le bouton de chargement. Le SDK n'offre aucun moyen
+    // d'afficher un onglet (Sidebar : registerScriptTab, removeScriptTab) : tout passe par le DOM,
+    // MESURÉ dans WME le 30/09/2026 :
+    // - le bouton « Scripts » du tiroir est dans l'ombre de wz-navigation-item[data-for=userscript_tab] ;
+    //   un clic sur l'élément hôte ne fait RIEN, et un clic quand Scripts est déjà ouvert le REFERME
+    //   ⇒ ne cliquer que si la liste des onglets de scripts (#user-tabs) n'est pas affichée ;
+    // - l'onglet du script est le lien a[href="#<id du panneau>"] (onglets Bootstrap).
+    function ouvrirOnglet() {
+        if (!paneEl || !paneEl.id) return;
+        const onglets = document.getElementById('user-tabs');
+        if (!onglets || onglets.offsetParent === null) {
+            const nav = document.querySelector('wz-navigation-item[data-for="userscript_tab"]');
+            const b = nav && nav.shadowRoot && nav.shadowRoot.querySelector('button');
+            if (b) b.click(); else log('bouton Scripts introuvable');
+        }
+        const lien = document.querySelector('a[href="#' + paneEl.id + '"]');
+        if (lien) lien.click(); else log('onglet du script introuvable');
+        setTimeout(() => {
+            const btn = paneEl.querySelector('#wda-load');
+            if (!btn || btn.offsetParent === null) { log('bouton de chargement non affiché'); return; }
+            btn.scrollIntoView({ block: 'center' });
+            btn.focus();
+            btn.classList.remove('wda-appel');
+            void btn.offsetWidth;
+            btn.classList.add('wda-appel');
+            setTimeout(() => btn.classList.remove('wda-appel'), 2500);
+        }, 300);
     }
 
     // WME reconstruit ce libellé à chaque changement de commune : sans observateur, le badge
@@ -1671,6 +1723,10 @@
 #${BADGE_ID}.wda-vert{background:rgba(46,125,50,.88)}
 #${BADGE_ID}.wda-bleu{background:rgba(21,101,192,.88)}
 #${BADGE_ID}.wda-gris{background:rgba(70,70,70,.7)}
+/* Badge qui mène quelque part (historique à charger) : il se montre cliquable. */
+#${BADGE_ID}.wda-action{cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px}
+#${BADGE_ID}.wda-action:hover{background:rgba(40,40,40,.85)}
+#${BADGE_ID}.wda-action:focus-visible{outline:2px solid #2196f3;outline-offset:2px}
 /* Les hachures se posent SUR la couleur de tranche : « background » ci-dessus remet
    background-image à none, cette règle qui suit le repose. L'ordre fait tout, la
    spécificité est identique. Le doute a donc sa propre marque, la couleur garde son sens. */
@@ -1718,6 +1774,10 @@
   border:none;border-radius:50px;font:600 11px 'Rubik','Open Sans',sans-serif;cursor:pointer;white-space:nowrap;background:#2196f3;color:#fff}
 #wda-sidebar .wda-btn:hover{filter:brightness(1.08)}
 #wda-sidebar .wda-btn[disabled]{opacity:.5;cursor:default;filter:none}
+/* Désigné par un clic sur le badge : trois pulsations, puis rien. Sans animation si le système le demande. */
+#wda-sidebar .wda-btn.wda-appel{animation:wda-appel .8s ease-in-out 3}
+@keyframes wda-appel{50%{box-shadow:0 0 0 5px rgba(25,118,210,.35)}}
+@media (prefers-reduced-motion:reduce){#wda-sidebar .wda-btn.wda-appel{animation:none;box-shadow:0 0 0 3px rgba(25,118,210,.45)}}
 #wda-sidebar .wda-btn-sec{background:#dde3ea;color:#2d3748;margin-top:6px}
 #wda-sidebar .wda-etat{margin:6px 0;padding:5px 8px;background:#f5f7f9;border:1px solid #dde3ea;border-radius:8px;font-size:11px;line-height:1.5;color:#2d3748}
 /* Légende : les couleurs des pastilles ne se devinent pas — un éditeur ④ a lu « 2 jours »
@@ -1876,7 +1936,7 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
         if (e) {
             const v = dernierVerdict;
             if (!v) e.textContent = t('pNotEval');
-            else if (!v.historique) e.textContent = t('bNoHist');
+            else if (!v.historique) e.textContent = t('pNoHist');
             else e.innerHTML = '<b>' + t('pAtCenter') + '</b> ' + texteBadge(v).txt
                 + (v.restant && !v.permanent && v.restant.etat !== 'expire' ? '<br><span class="wda-note">' + t('tipRetreat', dateCourte(v.expireLe)) + '</span>' : '')
                 + (z.managed.length ? '<br><span class="wda-note">' + t('pZones', z.managed.length, z.countries.length) + '</span>' : '');
