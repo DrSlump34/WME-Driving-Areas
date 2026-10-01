@@ -7,9 +7,9 @@
 // @name:pt-BR   WME Driving Areas
 // @name:pt      WME Driving Areas
 // @name:he      WME Driving Areas
-// @icon         data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc2NCcgaGVpZ2h0PSc2NCcgdmlld0JveD0nMCAwIDY0IDY0Jz4gPHJlY3Qgd2lkdGg9JzY0JyBoZWlnaHQ9JzY0JyByeD0nMTInIGZpbGw9JyMxNTY1YzAnLz4gPHJlY3QgeD0nMTUnIHk9JzgnIHdpZHRoPSczNCcgaGVpZ2h0PSc2JyByeD0nMycgZmlsbD0nI2ZmZmZmZicvPiA8cmVjdCB4PScxNScgeT0nNTAnIHdpZHRoPSczNCcgaGVpZ2h0PSc2JyByeD0nMycgZmlsbD0nI2ZmZmZmZicvPiA8cGF0aCBkPSdNMTkgMTQgTDQ1IDE0IEwzNCAzMiBMNDUgNTAgTDE5IDUwIEwzMCAzMiBaJyBmaWxsPScjZmZmZmZmJy8+IDxwYXRoIGQ9J00yMyAxOCBMNDEgMTggTDMyIDMyIFonIGZpbGw9JyNmYjhjMDAnLz4gPHBhdGggZD0nTTMyIDQwIEw0MSA0NiBMMjMgNDYgWicgZmlsbD0nI2ZiOGMwMCcvPiA8cmVjdCB4PSczMScgeT0nMzAnIHdpZHRoPScyJyBoZWlnaHQ9JzEyJyBmaWxsPScjZmI4YzAwJy8+PC9zdmc+
+// @icon         data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScyNCcgaGVpZ2h0PScyNCcgdmlld0JveD0nMCAwIDI0IDI0Jz48cmVjdCB4PSc0LjUnIHk9JzEuNScgd2lkdGg9JzE1JyBoZWlnaHQ9JzMnIHJ4PScxLjUnIGZpbGw9JyM2MDdkOGInLz48cmVjdCB4PSc0LjUnIHk9JzE5LjUnIHdpZHRoPScxNScgaGVpZ2h0PSczJyByeD0nMS41JyBmaWxsPScjNjA3ZDhiJy8+PHBhdGggZD0nTTYuNSA0LjUgSDE3LjUgTDEyLjkgMTIgTDE3LjUgMTkuNSBINi41IEwxMS4xIDEyIFonIGZpbGw9JyNlY2VmZjEnIHN0cm9rZT0nIzYwN2Q4Yicgc3Ryb2tlLXdpZHRoPScxLjQnIHN0cm9rZS1saW5lam9pbj0ncm91bmQnLz48cGF0aCBkPSdNOC42IDYuMiBIMTUuNCBMMTIgMTEgWicgZmlsbD0nI2ZiOGMwMCcvPjxwYXRoIGQ9J00xMiAxNS4yIEwxNS42IDE4LjIgSDguNCBaJyBmaWxsPScjZmI4YzAwJy8+PC9zdmc+
 // @namespace    https://github.com/DrSlump34
-// @version      0.08.00
+// @version      0.08.01
 // @description  Shows how long your driving-based editing rights will last, next to the WME location label — rebuilt from your drive history. Adds a GPX export and a countdown to each drive.
 // @description:fr Affiche le temps restant sur vos droits d'édition obtenus en roulant, à côté du libellé de localisation de WME — reconstruit depuis l'historique des trajets. Ajoute un export GPX et un décompte à chaque trajet.
 // @description:de Zeigt neben der WME-Ortsanzeige, wie lange Ihre durch Fahrten erworbenen Bearbeitungsrechte noch gelten — rekonstruiert aus Ihrem Fahrtenverlauf. Mit GPX-Export und Countdown je Fahrt.
@@ -80,14 +80,9 @@
     const gmScript = () => (typeof GM_info !== 'undefined' && GM_info.script) || {};
     const URL_MAJ = gmScript().updateURL || 'https://update.greasyfork.org/scripts/593493/WME%20Driving%20Areas.meta.js';
     const URL_INSTALLER = gmScript().downloadURL || 'https://update.greasyfork.org/scripts/593493/WME%20Driving%20Areas.user.js';
-    // L'icône du script dans l'onglet Scripts et en tête du panneau : le sablier SANS fond, comme les
-    // autres scripts (WCT et WJN mettent un emoji seul, WRP un dessin sans fond) — le carré bleu de
-    // @icon reste pour la liste de Tampermonkey. Demande de l'auteur, 25/09/2026.
-    const ICONE = '<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="12" y="4" width="40" height="8" rx="4" fill="#1565c0"/>'
-        + '<rect x="12" y="52" width="40" height="8" rx="4" fill="#1565c0"/>'
-        + '<path d="M17 12 L47 12 L35 32 L47 52 L17 52 L29 32 Z" fill="#fff" stroke="#1565c0" stroke-width="5" stroke-linejoin="round"/>'
-        + '<path d="M23 17 L41 17 L32 30 Z" fill="#fb8c00"/><path d="M32 40 L42 48 L22 48 Z" fill="#fb8c00"/>'
-        + '<rect x="30.5" y="29" width="3" height="13" fill="#fb8c00"/></svg>';
+    // L'icône du script (la même que @icon) : le sablier détouré, sans plaque — onglet Scripts et
+    // tête du panneau. Demande de l'auteur, 01/10/2026.
+    const ICONE = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4.5" y="1.5" width="15" height="3" rx="1.5" fill="#607d8b"/><rect x="4.5" y="19.5" width="15" height="3" rx="1.5" fill="#607d8b"/><path d="M6.5 4.5 H17.5 L12.9 12 L17.5 19.5 H6.5 L11.1 12 Z" fill="#eceff1" stroke="#607d8b" stroke-width="1.4" stroke-linejoin="round"/><path d="M8.6 6.2 H15.4 L12 11 Z" fill="#fb8c00"/><path d="M12 15.2 L15.6 18.2 H8.4 Z" fill="#fb8c00"/></svg>';
     const icone = px => ICONE.replace('<svg ', '<svg width="' + px + '" height="' + px + '" ');
 
     // ---------- Réglages ----------
