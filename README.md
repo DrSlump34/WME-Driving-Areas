@@ -102,11 +102,16 @@ L'information est en revanche **reconstructible** :
 |---|---|
 | `GET /app/Archive/List?count=50&minDistance=0&offset=N` | les trajets **datés** (`id`, `startTime`, `totalRoadMeters`) |
 | `GET /app/Archive/SessionGPS?id=<uuid>` | la **trace GPS** de chaque trajet |
-| `W.loginManager.user.attributes.editableMiles` | le **rayon** du droit (4 → 6,437 km) |
+| le **rang** (`sdk.State.getUserInfo`), et la règle de WME | le **rayon** du droit (4 → 6,437 km) |
 | `GET /app/Session` → `areas[type='drive']` | le **polygone** de la zone, exact |
 
-Le rayon est **lu**, jamais déduit du niveau d'éditeur : une table 1/2/3/4 miles codée en dur est une
-borne qui se périme sans prévenir.
+⚠️ **Depuis la 0.09.00, le rayon est CALCULÉ, et c'est WME qui le veut ainsi.** Jusqu'à la 0.08 il était
+lu dans `W.loginManager.user.attributes.editableMiles` ; mais `W` disparaît le 24/11/2026, et le SDK ne
+donne pas ce champ. Le code de WME (v2.370, relevé le 04/10/2026) montre que **le serveur ne l'envoie pas
+non plus** : WME le déduit lui-même du rang — niveau = rang + 1 plafonné à 6, puis niveau 1 → 1 mile,
+2 → 2, 3 → 3, 4 et plus → 4. WDA applique la même règle (mesuré : rang 5 ⇒ 4 miles, comme `W`), et
+`banc-calcul` la tient. C'est la seule table écrite dans le script : si WME change la sienne, il faudra
+la suivre.
 
 Le polygone répond à « suis-je concerné ici ? » (exactement), les traces datées répondent à « depuis
 quand ? ». Les deux questions sont séparées pour qu'une imprécision sur le rayon ne coûte jamais un
@@ -193,7 +198,7 @@ sur l'image, et une route qui ne doit pas voler la vedette au sablier.
 
 ## État
 
-`0.08.02` — démarrage à tous les zooms : le script (badge, onglet) n'attendait que les zooms éditables de WME ; il démarre dès que le SDK est prêt, même la carte vue de loin. `0.08.01` — icône détourée, sans plaque bleue. `0.08.00` — **la durée du droit passe de 90 à 63 jours**, la règle de Waze depuis novembre 2025 (voir plus haut) ; échéance à minuit du 63e jour, au plus tôt ; vert au-delà de 42 jours ; textes de la règle réécrits dans les 8 langues. `0.07.04` (la 0.07.03, jamais publiée, n'ouvrait pas l'onglet) — avant le premier chargement, le badge ne dit plus « historique non chargé », qui se lisait comme une panne, mais « cliquez pour charger l’historique », et il ouvre l'onglet du script sur le bouton de chargement. `0.07.02` — le SDK en mode asynchrone. `0.07.01` — l'onglet Scripts aligné sur les valeurs mesurées dans WME de WCT, WJN et WRP (bleu #2196f3, boutons en pilule), et le sablier sans fond. `0.07.00` — un audit complet (25/09/2026, 22 agents) : 18 défauts, dont 5 majeurs, tous traités.
+`0.09.01` — **plus aucun `W`** (retiré de WME le 24/11/2026) : zones, rang et langue par le SDK, compte et pays éditables par `/app/Session`, rayon calculé depuis le rang selon la règle de WME ; caches conservés ; chemin de l'historique corrigé en Amérique du Nord (`/Descartes`). `0.08.02` — démarrage à tous les zooms : le script (badge, onglet) n'attendait que les zooms éditables de WME ; il démarre dès que le SDK est prêt, même la carte vue de loin. `0.08.01` — icône détourée, sans plaque bleue. `0.08.00` — **la durée du droit passe de 90 à 63 jours**, la règle de Waze depuis novembre 2025 (voir plus haut) ; échéance à minuit du 63e jour, au plus tôt ; vert au-delà de 42 jours ; textes de la règle réécrits dans les 8 langues. `0.07.04` (la 0.07.03, jamais publiée, n'ouvrait pas l'onglet) — avant le premier chargement, le badge ne dit plus « historique non chargé », qui se lisait comme une panne, mais « cliquez pour charger l’historique », et il ouvre l'onglet du script sur le bouton de chargement. `0.07.02` — le SDK en mode asynchrone. `0.07.01` — l'onglet Scripts aligné sur les valeurs mesurées dans WME de WCT, WJN et WRP (bleu #2196f3, boutons en pilule), et le sablier sans fond. `0.07.00` — un audit complet (25/09/2026, 22 agents) : 18 défauts, dont 5 majeurs, tous traités.
 Trois cas pouvaient annoncer **plus de temps qu'il n'en restait** :
 
 - **Le temps restant s'arrondit vers le bas**, une seule règle pour le badge, le calque et les
