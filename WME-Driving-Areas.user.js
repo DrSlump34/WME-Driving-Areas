@@ -9,7 +9,7 @@
 // @name:he      WME Driving Areas
 // @icon         data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScyNCcgaGVpZ2h0PScyNCcgdmlld0JveD0nMCAwIDI0IDI0Jz48cmVjdCB4PSc0LjUnIHk9JzEuNScgd2lkdGg9JzE1JyBoZWlnaHQ9JzMnIHJ4PScxLjUnIGZpbGw9JyM2MDdkOGInLz48cmVjdCB4PSc0LjUnIHk9JzE5LjUnIHdpZHRoPScxNScgaGVpZ2h0PSczJyByeD0nMS41JyBmaWxsPScjNjA3ZDhiJy8+PHBhdGggZD0nTTYuNSA0LjUgSDE3LjUgTDEyLjkgMTIgTDE3LjUgMTkuNSBINi41IEwxMS4xIDEyIFonIGZpbGw9JyNlY2VmZjEnIHN0cm9rZT0nIzYwN2Q4Yicgc3Ryb2tlLXdpZHRoPScxLjQnIHN0cm9rZS1saW5lam9pbj0ncm91bmQnLz48cGF0aCBkPSdNOC42IDYuMiBIMTUuNCBMMTIgMTEgWicgZmlsbD0nI2ZiOGMwMCcvPjxwYXRoIGQ9J00xMiAxNS4yIEwxNS42IDE4LjIgSDguNCBaJyBmaWxsPScjZmI4YzAwJy8+PC9zdmc+
 // @namespace    https://github.com/DrSlump34
-// @version      0.08.02
+// @version      0.09.00
 // @description  Shows how long your driving-based editing rights will last, next to the WME location label — rebuilt from your drive history. Adds a GPX export and a countdown to each drive.
 // @description:fr Affiche le temps restant sur vos droits d'édition obtenus en roulant, à côté du libellé de localisation de WME — reconstruit depuis l'historique des trajets. Ajoute un export GPX et un décompte à chaque trajet.
 // @description:de Zeigt neben der WME-Ortsanzeige, wie lange Ihre durch Fahrten erworbenen Bearbeitungsrechte noch gelten — rekonstruiert aus Ihrem Fahrtenverlauf. Mit GPX-Export und Countdown je Fahrt.
@@ -72,7 +72,7 @@
     const VERSION = (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version) || 'dev';
     // La page de WME. Depuis la 0.07.00 le script demande GM_xmlhttpRequest (la détection de
     // nouvelle version, comme WCT et WRP) : le gestionnaire l'isole alors dans un bac à sable, et
-    // W, getWmeSdk et fetch de la page se lisent par unsafeWindow.
+    // getWmeSdk et fetch de la page se lisent par unsafeWindow (plus aucun `W` depuis la 0.09.00).
     const pw = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
     const URL_GF = 'https://greasyfork.org/scripts/593493-wme-driving-areas';
     const URL_GH = 'https://github.com/DrSlump34/WME-Driving-Areas';
@@ -181,7 +181,7 @@
     // code ISO « he », mais d'anciens navigateurs renvoient encore le code hérité « iw ».
     const detectLang = () => {
         try {
-            const l = (pw.W?.userscripts?.state?.locale || document.documentElement.lang || navigator.language || 'en').toLowerCase();
+            const l = (_compte.locale || document.documentElement.lang || navigator.language || 'en').toLowerCase();
             if (l.startsWith('pt')) return l.includes('br') ? 'pt-BR' : 'pt-PT';
             if (l.startsWith('he') || l.startsWith('iw')) return 'he';
             return LANGS.map(x => x.code).find(c => !c.includes('-') && l.startsWith(c)) || 'en';
@@ -768,14 +768,45 @@
     //  API Waze — same-origin, donc un fetch() ordinaire passe
     // =====================================================================
 
+    // Région du serveur : row, usa ou il, par le SDK (`W.Config` disparaît le 24/11/2026).
     const wmeEnv = () => {
         try {
-            return (location.pathname.match(/^\/(\w+)-editor/) || [])[1]
-                || (pw.W?.Config?.server?.baseUrl?.match(/\/(\w+)-Descartes/) || [])[1]
-                || 'row';
+            return (location.pathname.match(/^\/(\w+)-editor/) || [])[1] || _compte.region || 'row';
         } catch (e) { return 'row'; }
     };
-    const api = chemin => '/' + wmeEnv() + '-Descartes/app/' + chemin;
+    // ⚠️ En Amérique du Nord, le chemin est `/Descartes/app/…` : `/usa-Descartes/…` rend 404
+    // (mesuré pour WCT le 04/10/2026). L'ancien calcul y appelait donc un chemin qui n'existe pas.
+    const api = chemin => ((wmeEnv() === 'usa' || wmeEnv() === 'na') ? '/Descartes' : '/' + wmeEnv() + '-Descartes') + '/app/' + chemin;
+
+    /* ⭐⭐⭐ LE COMPTE CONNECTÉ, LU UNE FOIS AU DÉMARRAGE (`lireCompte`), sans `W` (retiré le 24/11/2026).
+       · zones, rang, nom : `sdk.State.getUserInfo()` — zones mesurées IDENTIQUES à `W` le 04/10/2026 ;
+       · identifiant et pays éditables : l'API `Session` de WME, que WME lit lui-même — le SDK ne
+         les donne pas ;
+       · rayon : WME ne le reçoit PAS du serveur, il le CALCULE à partir du rang (bundle v2.370,
+         relevé le 04/10/2026) : niveau = rang + 1 plafonné à 6, puis niveau 1 → 1 mile, 2 → 2,
+         3 → 3, 4 et plus → 4. On applique la même règle ; mesuré : rang 5 ⇒ 4 miles = `W`.
+         ⚠️ C'est la seule table écrite ici : si WME change la sienne, ce calcul suit en retard. */
+    let _compte = { id: null, rank: null, areas: [], countries: [], locale: '', region: '' };
+    const milesDuRang = (rang) => {
+        const niveau = Math.min(Number(rang) + 1, 6);
+        return niveau >= 4 ? 4 : Math.max(1, niveau);
+    };
+    async function lireCompte() {
+        try { _compte.locale = (await sdk.Settings.getLocale())?.localeCode || ''; } catch (e) { }
+        try { _compte.region = (await sdk.Settings.getRegionCode()) || ''; } catch (e) { }
+        try {
+            const u = await sdk.State.getUserInfo();
+            if (u) {
+                _compte.rank = typeof u.rank === 'number' ? u.rank : null;
+                _compte.areas = (u.editableAreas || []).map(a => ({ type: a.type, geometry: a.geometry }));
+            }
+        } catch (e) { log('compte (SDK) : ' + e.message); }
+        try {
+            const j = await getJSON(api('Session'));
+            _compte.id = (j && j.id !== undefined) ? j.id : null;
+            _compte.countries = (j && j.editableCountryIDs) || [];
+        } catch (e) { log('compte (Session) : ' + e.message); }
+    }
 
     async function getJSON(url) {
         // fetch de la PAGE : même origine que WME, donc ses cookies de session.
@@ -787,16 +818,16 @@
     // Le rayon est LU (editableMiles), jamais déduit du niveau : une table 1/2/3/4 miles codée
     // en dur est une borne qui se périme sans prévenir.
     function lireZones() {
-        const u = pw.W?.loginManager?.user?.attributes || {};
-        const areas = u.areas || [];
+        const areas = _compte.areas || [];
+        const rangConnu = typeof _compte.rank === 'number';
         return {
             drive: areas.filter(a => a.type === 'drive').map(a => a.geometry),
             managed: areas.filter(a => a.type === 'managed').map(a => a.geometry),
-            miles: (typeof u.editableMiles === 'number' && u.editableMiles > 0) ? u.editableMiles : DEFAULT_MILES,
-            // Faux quand WME n'a pas donné le rayon et qu'on a pris DEFAULT_MILES : si le vrai est
+            miles: rangConnu ? milesDuRang(_compte.rank) : DEFAULT_MILES,
+            // Faux quand le rang n'a pas pu être lu et qu'on a pris DEFAULT_MILES : si le vrai est
             // plus petit, le trajet retenu est peut-être hors de portée. Le verdict le dit alors.
-            rayonLu: typeof u.editableMiles === 'number' && u.editableMiles > 0,
-            countries: u.editableCountryIDs || []
+            rayonLu: rangConnu,
+            countries: _compte.countries || []
         };
     }
 
@@ -854,9 +885,10 @@
     // Le compte connecté. ⚠️ Le cache lui appartient : la 0.06.00 le rangeait sous une clé fixe, et
     // un second compte ouvert dans le même navigateur héritait des trajets du premier — des « ~85 j »
     // qui n'étaient pas les siens, et ses traces sur le calque (audit du 25/09/2026). L'identifiant
-    // est `W.loginManager.user.attributes.id`, un nombre (relevé dans WME le 25/09/2026).
+    // est l'identifiant numérique du compte — celui de `W.loginManager` jusqu'à la 0.08, lu depuis la
+    // 0.09 dans l'API `Session` (le même nombre, mesuré le 04/10/2026) : les caches existants restent les siens.
     function proprietaire() {
-        const id = pw.W?.loginManager?.user?.attributes?.id;
+        const id = _compte.id;
         return (id === undefined || id === null) ? null : id;
     }
 
@@ -1324,7 +1356,14 @@
             }],
             styleContext: { couleur: ctx => ctx.feature.properties.couleur, tirets: ctx => ctx.feature.properties.tirets }
         });
-        try { pw.W.map.setLayerIndex(pw.W.map.getLayersByName(LAYER)[0], 9999); } catch (e) { }
+        // Au-dessus des calques de WME (routes, segments, lieux, fermetures), par le SDK.
+        try {
+            let z = 0;
+            for (const n of ['roads', 'segments', 'venues', 'closures']) {
+                try { z = Math.max(z, Number(await sdk.Map.getLayerZIndex({ layerName: n })) || 0); } catch (e) { }
+            }
+            await sdk.Map.setLayerZIndex({ layerName: LAYER, zIndex: (z || 6000) + 100 });
+        } catch (e) { }
         calqueOk = true;
     }
 
@@ -2058,6 +2097,7 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
         pw.__WDA_LOADED = true;
 
         sdk = pw.getWmeSdk({ scriptId: SCRIPT_ID, scriptName: SCRIPT_NAME, mode: 'async' });
+        await lireCompte();   // AVANT le cache : il appartient au compte (proprietaire)
         cache = lireCache();
         opts = lireOpts();
         _lang = resolveLang();
@@ -2114,7 +2154,7 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
     (() => {
         let lance = false;
         const go = () => { if (lance) return; lance = true; clearInterval(minuterie); Promise.resolve(pw.SDK_INITIALIZED).then(init); };
-        const pret = () => !!(pw.SDK_INITIALIZED || (pw.W && pw.W.userscripts && pw.W.userscripts.state && pw.W.userscripts.state.isReady));
+        const pret = () => !!pw.SDK_INITIALIZED;
         const minuterie = setInterval(() => { if (pret()) go(); }, 300);
         if (pret()) go();
         document.addEventListener('wme-initialized', go, { once: true });

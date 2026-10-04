@@ -19,16 +19,21 @@ const EXPOSE = [
     // Ajoutées en 0.07.00 ; absentes d'une version plus ancienne, elles valent undefined.
     'restant', 'echeance', 'nCouleur', 'ARCHIVE_MIN_J', 'traceDe', 'chargerHistorique', 'proprietaire',
     'buildPane',
+    // 0.09.00 : le rayon recalculé depuis le rang (plus de W.loginManager.user.editableMiles).
+    'milesDuRang',
 ];
 
-function charger(fichier, { stockage = {}, maintenant = null, window: fenetre = {}, fetch: reseau = null } = {}) {
+// `compte` : le compte connecté ({ id, rank, areas, countries… }). Depuis la 0.09.00 (plus de `W`), le
+// script le lit au démarrage dans `_compte` ; le banc le pose directement.
+function charger(fichier, { stockage = {}, maintenant = null, window: fenetre = {}, fetch: reseau = null, compte = null } = {}) {
     let src = fs.readFileSync(fichier, 'utf8');
     const ancre = '    const init = async () => {';
     if (!src.includes(ancre)) throw new Error('ancre « const init » introuvable dans ' + fichier);
     const publie = EXPOSE.map(n => n + ': (typeof ' + n + ' !== "undefined" ? ' + n + ' : undefined)').join(', ');
     src = src.replace(ancre, '    globalThis.__WDA = { ' + publie + ',\n'
         + '        regler: (o) => { if ("cache" in o) cache = o.cache; if ("zones" in o) zones = o.zones;'
-        + ' if ("opts" in o) opts = Object.assign({}, opts, o.opts); if ("sdk" in o) sdk = o.sdk; if ("lang" in o) _lang = o.lang; },\n'
+        + ' if ("opts" in o) opts = Object.assign({}, opts, o.opts); if ("sdk" in o) sdk = o.sdk; if ("lang" in o) _lang = o.lang;'
+        + ' if ("compte" in o && typeof _compte !== "undefined") Object.assign(_compte, o.compte); },\n'
         + '        etat: () => ({ cache, zones, opts }) };\n' + ancre);
 
     const store = Object.assign({}, stockage);
@@ -63,6 +68,7 @@ function charger(fichier, { stockage = {}, maintenant = null, window: fenetre = 
     vm.createContext(ctx);
     vm.runInContext(src, ctx, { filename: fichier });
     const W = ctx.__WDA;
+    if (compte) W.regler({ compte });
     W.stockage = store;
     W.fixerQuota = q => { quota = q; };
     const journal = [];

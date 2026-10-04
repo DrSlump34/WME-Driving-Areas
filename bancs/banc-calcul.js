@@ -149,5 +149,20 @@ console.log('--- 8. ∞ : seulement si TOUT le trajet est dans une zone gérée 
     chk('∞ PRÉSUMÉ (pays géré) : pastille hachurée', e.textContent === '∞' && /wda-approx/.test(e.className), e.textContent + ' / ' + e.className);
 }
 
+// ⭐ 0.09.00 — LE RAYON, RECALCULÉ COMME WME (bundle v2.370, relevé le 04/10/2026) : niveau = rang + 1
+// plafonné à 6 ; niveau 1 → 1 mile, 2 → 2, 3 → 3, 4 et plus → 4. Mesuré dans WME : rang 5 ⇒ 4 = W.
+console.log('\n--- Le rayon se déduit du rang, selon la règle de WME ---');
+if (typeof W.milesDuRang !== 'function') { chk('milesDuRang existe', false, typeof W.milesDuRang); }
+else {
+    const obtenu = [0, 1, 2, 3, 4, 5, 6].map(W.milesDuRang);
+    chk('rangs 0 à 6 ⇒ 1, 2, 3, 4, 4, 4, 4 miles', JSON.stringify(obtenu) === '[1,2,3,4,4,4,4]', JSON.stringify(obtenu));
+    W.regler({ compte: { rank: 5, areas: [], countries: [] } });
+    const z = W.lireZones();
+    chk('rang 5 lu : 4 miles, et le rayon est dit LU', z.miles === 4 && z.rayonLu === true, z.miles + ' / ' + z.rayonLu);
+    W.regler({ compte: { rank: null } });
+    const z2 = W.lireZones();
+    chk('rang illisible : rayon par défaut, dit SUPPOSÉ', z2.rayonLu === false, z2.miles + ' / ' + z2.rayonLu);
+}
+
 console.log(ko ? '\n' + ko + ' ECHEC(S)' : '\nTOUT PASSE');
 process.exit(ko ? 1 : 0);

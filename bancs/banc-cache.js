@@ -21,7 +21,8 @@ const eq = (nom, obtenu, attendu) => {
     console.log((ok ? '  ok   ' : '  ECHEC') + ' ' + nom + ' -> ' + JSON.stringify(obtenu)
         + (ok ? '' : '   (attendu ' + JSON.stringify(attendu) + ')'));
 };
-const compte = id => ({ W: { loginManager: { user: { attributes: { id } } } } });
+// Le compte connecté (0.09.00 : `_compte`, lu dans l'API Session ; plus de `W.loginManager`).
+const compte = id => ({ compte: { id } });
 const jeu = (n, p, ageMax) => ({
     at: 0,
     drives: Array.from({ length: n }, (_, i) => ({
@@ -34,7 +35,7 @@ const jeu = (n, p, ageMax) => ({
 
 console.log('--- 1. Arrondi à 5 décimales : poids gagné, précision gardée ---');
 {
-    const W = charger(FICHIER, { window: compte(1) });
+    const W = charger(FICHIER, { ...compte(1) });
     const brut = jeu(300, 80, 60);
     const origine = JSON.parse(JSON.stringify(brut));     // copie AVANT l'arrondi
     const avant = JSON.stringify(brut).length;
@@ -52,7 +53,7 @@ console.log('--- 1. Arrondi à 5 décimales : poids gagné, précision gardée -
 
 console.log('--- 2. Quota : une perte COMPTÉE ; un échec total, dit autrement ---');
 {
-    const W = charger(FICHIER, { window: compte(1) });
+    const W = charger(FICHIER, { ...compte(1) });
     const gros = jeu(300, 80, 60);
     W.fixerQuota(400000);
     eq('l\'écriture finit par passer', W.ecrireCache(gros), true);
@@ -72,12 +73,12 @@ console.log('--- 2. Quota : une perte COMPTÉE ; un échec total, dit autrement 
 
 console.log('--- 3. Purge des plus de PURGE_DAYS jours, à l\'écriture ET à la lecture ---');
 {
-    const W = charger(FICHIER, { window: compte(1) });
+    const W = charger(FICHIER, { ...compte(1) });
     const vieux = jeu(10, 5, 400);
     W.ecrireCache(vieux);
     eq('écriture : aucun trajet au-delà de PURGE_DAYS', vieux.drives.every(d => (Date.now() - d.t) / J <= W.PURGE_DAYS), true);
     eq('écriture : les récents survivent', vieux.drives.length > 0, true);
-    const W2 = charger(FICHIER, { window: compte(1), stockage: { 'wda.cache.v1': JSON.stringify({ at: 1, owner: 1, drives: [
+    const W2 = charger(FICHIER, { ...compte(1), stockage: { 'wda.cache.v1': JSON.stringify({ at: 1, owner: 1, drives: [
         { id: 'ancien', t: Date.now() - (W.PURGE_DAYS + 20) * J, bb: null, pts: [] },
         { id: 'recent', t: Date.now() - 10 * J, bb: null, pts: [] }] }) } });
     eq('lecture : le trajet trop vieux est écarté', W2.lireCache().drives.map(d => d.id), ['recent']);
@@ -86,18 +87,18 @@ console.log('--- 3. Purge des plus de PURGE_DAYS jours, à l\'écriture ET à la
 console.log('--- 4. Le cache appartient à UN compte ---');
 {
     const stock = { 'wda.cache.v1': JSON.stringify({ at: 5, owner: 1, drives: [{ id: 'a', t: Date.now() - J, bb: null, pts: [] }] }) };
-    const autre = charger(FICHIER, { window: compte(2), stockage: stock });
+    const autre = charger(FICHIER, { ...compte(2), stockage: stock });
     eq('un autre compte ne reçoit AUCUN trajet', autre.lireCache().drives.length, 0);
-    const meme = charger(FICHIER, { window: compte(1), stockage: stock });
+    const meme = charger(FICHIER, { ...compte(1), stockage: stock });
     eq('le même compte retrouve les siens', meme.lireCache().drives.length, 1);
-    const sansProprio = charger(FICHIER, { window: compte(7), stockage: { 'wda.cache.v1': JSON.stringify({ at: 5, drives: [{ id: 'b', t: Date.now() - J, bb: null, pts: [] }] }) } });
+    const sansProprio = charger(FICHIER, { ...compte(7), stockage: { 'wda.cache.v1': JSON.stringify({ at: 5, drives: [{ id: 'b', t: Date.now() - J, bb: null, pts: [] }] }) } });
     const c = sansProprio.lireCache();
     eq('un cache d\'avant la 0.07.00 est adopté par le compte courant', [c.drives.length, c.owner], [1, 7]);
 }
 
 console.log('--- 5. Les clés de l\'ancien nom (wac.*) sont retirées une fois reprises ---');
 {
-    const W = charger(FICHIER, { window: compte(1), stockage: {
+    const W = charger(FICHIER, { ...compte(1), stockage: {
         'wac.cache.v1': JSON.stringify({ at: 5, drives: [{ id: 'x', t: Date.now() - J, bb: null, pts: [] }] }),
         'wac.opts.v1': JSON.stringify({ calque: true }) } });
     eq('historique repris', W.lireCache().drives.length, 1);
@@ -125,7 +126,7 @@ console.log('--- 6. Une trace illisible n\'est ni « ajoutée », ni oubliée : 
         if (/id=vide/.test(url)) return reponse(true, { archiveSessions: { objects: [] } });
         return reponse(true, trace);
     };
-    const W = charger(FICHIER, { window: compte(1), fetch: reseau });
+    const W = charger(FICHIER, { ...compte(1), fetch: reseau });
     const c = { at: 0, drives: [], owner: 1 };
     W.regler({ cache: c });
     const r1 = await W.chargerHistorique();
