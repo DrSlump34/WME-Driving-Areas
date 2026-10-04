@@ -9,7 +9,7 @@
 // @name:he      WME Driving Areas
 // @icon         data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScyNCcgaGVpZ2h0PScyNCcgdmlld0JveD0nMCAwIDI0IDI0Jz48cmVjdCB4PSc0LjUnIHk9JzEuNScgd2lkdGg9JzE1JyBoZWlnaHQ9JzMnIHJ4PScxLjUnIGZpbGw9JyM2MDdkOGInLz48cmVjdCB4PSc0LjUnIHk9JzE5LjUnIHdpZHRoPScxNScgaGVpZ2h0PSczJyByeD0nMS41JyBmaWxsPScjNjA3ZDhiJy8+PHBhdGggZD0nTTYuNSA0LjUgSDE3LjUgTDEyLjkgMTIgTDE3LjUgMTkuNSBINi41IEwxMS4xIDEyIFonIGZpbGw9JyNlY2VmZjEnIHN0cm9rZT0nIzYwN2Q4Yicgc3Ryb2tlLXdpZHRoPScxLjQnIHN0cm9rZS1saW5lam9pbj0ncm91bmQnLz48cGF0aCBkPSdNOC42IDYuMiBIMTUuNCBMMTIgMTEgWicgZmlsbD0nI2ZiOGMwMCcvPjxwYXRoIGQ9J00xMiAxNS4yIEwxNS42IDE4LjIgSDguNCBaJyBmaWxsPScjZmI4YzAwJy8+PC9zdmc+
 // @namespace    https://github.com/DrSlump34
-// @version      0.08.01
+// @version      0.08.02
 // @description  Shows how long your driving-based editing rights will last, next to the WME location label — rebuilt from your drive history. Adds a GPX export and a countdown to each drive.
 // @description:fr Affiche le temps restant sur vos droits d'édition obtenus en roulant, à côté du libellé de localisation de WME — reconstruit depuis l'historique des trajets. Ajoute un export GPX et un décompte à chaque trajet.
 // @description:de Zeigt neben der WME-Ortsanzeige, wie lange Ihre durch Fahrten erworbenen Bearbeitungsrechte noch gelten — rekonstruiert aus Ihrem Fahrtenverlauf. Mit GPX-Export und Countdown je Fahrt.
@@ -2108,7 +2108,17 @@ wz-card.drive-list-item:has(.wda-gpx) .list-item-card-info{padding-inline-end:82
         log('v' + VERSION + ' prêt — langue ' + _lang + ', ' + cache.drives.length + ' trajets en cache, rayon ' + zones.miles + ' mi');
     };
 
-    if (pw.W?.userscripts?.state?.isReady) init();
-    else document.addEventListener('wme-ready', init, { once: true });
+    // Démarrage dès que le SDK est prêt, à TOUS les zooms (comme WNA et WZM) : « wme-ready » n'arrive qu'à un zoom
+    // éditable (≥ 12), et le script — son bouton de carte compris — restait absent tant qu'on regardait la carte de
+    // loin (demande de l'auteur, 04/10/2026). Garde : wme-initialized et wme-ready peuvent arriver tous les deux.
+    (() => {
+        let lance = false;
+        const go = () => { if (lance) return; lance = true; clearInterval(minuterie); Promise.resolve(pw.SDK_INITIALIZED).then(init); };
+        const pret = () => !!(pw.SDK_INITIALIZED || (pw.W && pw.W.userscripts && pw.W.userscripts.state && pw.W.userscripts.state.isReady));
+        const minuterie = setInterval(() => { if (pret()) go(); }, 300);
+        if (pret()) go();
+        document.addEventListener('wme-initialized', go, { once: true });
+        document.addEventListener('wme-ready', go, { once: true });
+    })();
 
 })();
