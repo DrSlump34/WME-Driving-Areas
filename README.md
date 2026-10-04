@@ -9,11 +9,11 @@ retirée. »*
 *Anciennement `WME Area Countdown` — le renommage date du 29/08/2026. Une installation de l'ancien
 nom doit être désinstallée : les deux scripts poseraient chacun leur badge.*
 
-![L'onglet Scripts de WDA 0.08.00 : l'état au centre de la vue, les interrupteurs, le code couleur déplié ; sur la carte, les trajets colorés par échéance](wda-0.08.00-panneau-calque.jpg)
+![L'onglet Scripts de WDA 0.08.02 : l'état au centre de la vue, les interrupteurs, le code couleur déplié ; sur la carte, les trajets colorés par échéance](wda-0.08.02-panneau-calque.jpg)
 
-![« Vos trajets » : chaque trajet porte son échéance (J-62…) et un bouton d'export GPX ; le calque dessine les trajets, le trait se hache à l'approche de l'échéance](wda-0.08.00-pastilles-calque.jpg)
+![« Vos trajets » : chaque trajet porte son échéance (J-62…) et un bouton d'export GPX ; le calque dessine les trajets, le trait se hache à l'approche de l'échéance](wda-0.08.02-pastilles-calque.jpg)
 
-![Avant le premier chargement : le badge « cliquez pour charger l’historique » ouvre l'onglet du script et désigne le bouton de chargement](wda-0.08.00-badge-premier-chargement.jpg)
+![Avant le premier chargement : le badge « cliquez pour charger l’historique » ouvre l'onglet du script et désigne le bouton de chargement](wda-0.08.02-badge-premier-chargement.jpg)
 
 ## Ce qu'il ajoute à WME
 
