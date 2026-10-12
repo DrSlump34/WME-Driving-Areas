@@ -9,7 +9,7 @@
 // @name:he      WME Driving Areas
 // @icon         data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScyNCcgaGVpZ2h0PScyNCcgdmlld0JveD0nMCAwIDI0IDI0Jz48cmVjdCB4PSc0LjUnIHk9JzEuNScgd2lkdGg9JzE1JyBoZWlnaHQ9JzMnIHJ4PScxLjUnIGZpbGw9JyM2MDdkOGInLz48cmVjdCB4PSc0LjUnIHk9JzE5LjUnIHdpZHRoPScxNScgaGVpZ2h0PSczJyByeD0nMS41JyBmaWxsPScjNjA3ZDhiJy8+PHBhdGggZD0nTTYuNSA0LjUgSDE3LjUgTDEyLjkgMTIgTDE3LjUgMTkuNSBINi41IEwxMS4xIDEyIFonIGZpbGw9JyNlY2VmZjEnIHN0cm9rZT0nIzYwN2Q4Yicgc3Ryb2tlLXdpZHRoPScxLjQnIHN0cm9rZS1saW5lam9pbj0ncm91bmQnLz48cGF0aCBkPSdNOC42IDYuMiBIMTUuNCBMMTIgMTEgWicgZmlsbD0nI2ZiOGMwMCcvPjxwYXRoIGQ9J00xMiAxNS4yIEwxNS42IDE4LjIgSDguNCBaJyBmaWxsPScjZmI4YzAwJy8+PC9zdmc+
 // @namespace    https://github.com/DrSlump34
-// @version      0.09.06
+// @version      0.09.07
 // @description  Shows how long your driving-based editing rights will last, next to the WME location label — rebuilt from your drive history. Adds a GPX export and a countdown to each drive.
 // @description:fr Affiche le temps restant sur vos droits d'édition obtenus en roulant, à côté du libellé de localisation de WME — reconstruit depuis l'historique des trajets. Ajoute un export GPX et un décompte à chaque trajet.
 // @description:de Zeigt neben der WME-Ortsanzeige, wie lange Ihre durch Fahrten erworbenen Bearbeitungsrechte noch gelten — rekonstruiert aus Ihrem Fahrtenverlauf. Mit GPX-Export und Countdown je Fahrt.
@@ -1813,6 +1813,16 @@
    les onglets de WCT, WJN et WRP : titre 13 px en #2196f3 (police des h2 de WME), version #9e9e9e,
    texte #2d3748, notes #566372, sections en capitales #2196f3, boutons en pilule, pied #9e9e9e.
    La 0.07.00 avait d'abord pris le bleu foncé #1565c0 et des boutons carrés : écart relevé par l'auteur. */
+/* WME Studio, thème sombre : ses variables, toujours avec un repli. Sans Studio, ou en thème clair, ces règles ne s'appliquent pas. */
+html:is([data-wme-studio-theme="dark"],[data-wme-studio-theme="black"]) #wda-sidebar { color: var(--wme-studio-text, #e8eaed); }
+html:is([data-wme-studio-theme="dark"],[data-wme-studio-theme="black"]) #wda-sidebar :is(p,td,th,li,label,b,strong,bdi,dd,dt):not([class]) { color: inherit; }
+html:is([data-wme-studio-theme="dark"],[data-wme-studio-theme="black"]) #wda-sidebar :is([class*="hint"],[class*="note"],[class*="-ver"],[class*="foot"],[class*="links"],[class*="meta"],[class*="-lbl"]) { color: var(--wme-studio-text-secondary, #b6c0ca); }
+html:is([data-wme-studio-theme="dark"],[data-wme-studio-theme="black"]) #wda-sidebar :is(h2,[class*="-sec"]:not(button),[class*="sb-on"]) { color: #64b5f6; }
+html:is([data-wme-studio-theme="dark"],[data-wme-studio-theme="black"]) #wda-sidebar :is([class*="btn-neutral"],[class*="btn-sec"],[class*="chip"],[class*="help-hdr"],[class*="aide-h"],[class*="hist-row"],kbd,select,input:not([type=checkbox]):not([type=radio])) { background: var(--wme-studio-input, #3a3f44); color: var(--wme-studio-text, #e8eaed); border-color: var(--wme-studio-border, #4a5056); }
+html:is([data-wme-studio-theme="dark"],[data-wme-studio-theme="black"]) #wda-sidebar :is([class*="help-hdr"],[class*="aide-h"]).on { background: var(--wme-studio-hover, #454b52); color: var(--wme-studio-text, #e8eaed); }
+html:is([data-wme-studio-theme="dark"],[data-wme-studio-theme="black"]) #wda-sidebar :is([class*="help-body"],[class*="aide-c"]) { color: var(--wme-studio-text, #e8eaed); }
+html:is([data-wme-studio-theme="dark"],[data-wme-studio-theme="black"]) #wda-sidebar .wda-note { background: var(--wme-studio-input, #3a3f44); }
+html:is([data-wme-studio-theme="dark"],[data-wme-studio-theme="black"]) #wda-sidebar .wda-lg { color: inherit; }
 #wda-sidebar{padding:10px 12px;font-family:'Rubik','Open Sans',sans-serif;font-size:12px;color:#2d3748}
 #wda-sidebar h2{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#2196f3;margin:0 0 8px}
 #wda-sidebar h2 .wda-ver{font-size:11px;font-weight:400;color:#9e9e9e}
