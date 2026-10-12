@@ -9,7 +9,7 @@
 // @name:he      WME Driving Areas
 // @icon         data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPScyNCcgaGVpZ2h0PScyNCcgdmlld0JveD0nMCAwIDI0IDI0Jz48cmVjdCB4PSc0LjUnIHk9JzEuNScgd2lkdGg9JzE1JyBoZWlnaHQ9JzMnIHJ4PScxLjUnIGZpbGw9JyM2MDdkOGInLz48cmVjdCB4PSc0LjUnIHk9JzE5LjUnIHdpZHRoPScxNScgaGVpZ2h0PSczJyByeD0nMS41JyBmaWxsPScjNjA3ZDhiJy8+PHBhdGggZD0nTTYuNSA0LjUgSDE3LjUgTDEyLjkgMTIgTDE3LjUgMTkuNSBINi41IEwxMS4xIDEyIFonIGZpbGw9JyNlY2VmZjEnIHN0cm9rZT0nIzYwN2Q4Yicgc3Ryb2tlLXdpZHRoPScxLjQnIHN0cm9rZS1saW5lam9pbj0ncm91bmQnLz48cGF0aCBkPSdNOC42IDYuMiBIMTUuNCBMMTIgMTEgWicgZmlsbD0nI2ZiOGMwMCcvPjxwYXRoIGQ9J00xMiAxNS4yIEwxNS42IDE4LjIgSDguNCBaJyBmaWxsPScjZmI4YzAwJy8+PC9zdmc+
 // @namespace    https://github.com/DrSlump34
-// @version      0.09.07
+// @version      0.09.08
 // @description  Shows how long your driving-based editing rights will last, next to the WME location label — rebuilt from your drive history. Adds a GPX export and a countdown to each drive.
 // @description:fr Affiche le temps restant sur vos droits d'édition obtenus en roulant, à côté du libellé de localisation de WME — reconstruit depuis l'historique des trajets. Ajoute un export GPX et un décompte à chaque trajet.
 // @description:de Zeigt neben der WME-Ortsanzeige, wie lange Ihre durch Fahrten erworbenen Bearbeitungsrechte noch gelten — rekonstruiert aus Ihrem Fahrtenverlauf. Mit GPX-Export und Countdown je Fahrt.
@@ -1858,7 +1858,7 @@ html:is([data-wme-studio-theme="dark"],[data-wme-studio-theme="black"]) #wda-sid
 .wda-sb-foot{margin:10px 0 0;font-size:11px;color:#9e9e9e;line-height:1.6}
 /* Boutons : la pilule de WRP. Plein = l'action principale (un seul), neutre = le reste. */
 #wda-sidebar .wda-btn{display:inline-flex;align-items:center;gap:5px;height:auto;min-height:0;padding:3px 10px;margin:0;
-  border:none;border-radius:50px;font:600 11px 'Rubik','Open Sans',sans-serif;cursor:pointer;white-space:nowrap;background:#2196f3;color:#fff}
+  border:none;border-radius:50px;font:600 11px 'Rubik','Open Sans',sans-serif;cursor:pointer;white-space:nowrap;background:#1976d2;color:#fff}
 #wda-sidebar .wda-btn:hover{filter:brightness(1.08)}
 #wda-sidebar .wda-btn[disabled]{opacity:.5;cursor:default;filter:none}
 /* Désigné par un clic sur le badge : trois pulsations, puis rien. Sans animation si le système le demande. */
